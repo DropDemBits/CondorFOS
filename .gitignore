@@ -1,0 +1,14 @@
+# Vim swap files
+*.swp
+
+# Build files
+*.o
+condor.kern
+
+# Bochs stuff
+logfile.txt
+com1.txt
+
+# Code::blocks stuff
+*.cbp
+*.layout
