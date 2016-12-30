@@ -21,4 +21,4 @@ iso: condor.kern
 	cp $(KERN) ../isodir/boot/$(KERN)
 	grub-mkrescue -o ../$(ISO) ../isodir
 clean:
-	rm -f $(OBJS) $(ISO) $(KERN)
+	rm -f $(OBJS) ../$(ISO) $(KERN)
