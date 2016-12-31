@@ -24,7 +24,13 @@ _start:
 	cli
 	# Initialized stack
 	movl $stack_top, %esp
-	
+
+	# Before anything, init kernel
+	call kinit
+
+	# Go into the main kernel
+	call kmain
+
 	# Hang if there's nothing to do
 	cli
 .hang:
