@@ -150,3 +150,8 @@ void terminal_scroll(void)
 {
     terminal_row = 0;
 }
+
+void terminal_setColor(uint8_t fg, uint8_t bg)
+{
+    default_color = vga_makeColor(fg, bg);
+}

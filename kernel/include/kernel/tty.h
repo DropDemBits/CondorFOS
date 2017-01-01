@@ -12,5 +12,6 @@ void terminal_puts_Color(const char* string, uint16_t color);
 void terminal_putchar(const char uc);
 void terminal_puts(const char* string);
 void terminal_scroll(void);
+void terminal_setColor(uint8_t fg, uint8_t bg);
 
 #endif

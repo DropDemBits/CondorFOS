@@ -59,20 +59,36 @@ void kmain()
 
     for(;;) {
         time = 10-get_timer_seconds();
-        terminal_moveCursor(78, 24);
+        terminal_moveCursor(37, 12);
         if(time > 9) {
-            terminal_moveCursor(78, 24);
             terminal_puts("10");
         }
         else if(time == -1) {
             terminal_clear();
-            terminal_moveCursor(39-23, 12);
-            kpanic("Happy New YEAR!");
+            break;
         }
         else {
             terminal_putchar(' ');
             terminal_putchar(time+'0');
         }
         asm("hlt");
+    }
+
+    uint8_t clr = 1;
+    for(;;)
+    {
+        terminal_setColor(clr, VGA_BLACK);
+        terminal_clear();
+        terminal_moveCursor(39-7, 12);
+        terminal_puts("Happy New YEAR!");
+        asm("hlt");
+        terminal_setColor(VGA_BLACK, clr);
+        terminal_clear();
+        terminal_moveCursor(39-7, 12);
+        terminal_puts("Happy New YEAR!");
+        asm("hlt");
+        sleep(288);
+        sleep(288);
+        if(++clr > 15) clr = 1;
     }
 }
