@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <kernel/keyboard.h>
 #include <kernel/idt.h>
+#include <kernel/timer_hal.h>
 #include <kernel/tty.h>
 
 static char US_KEYBOARD[256] = {
@@ -75,8 +76,6 @@ static char charmap[256] = {
 
 void keyboard_isr()
 {
-    asm(
-        "xchg %bx, %bx\n\t");
     char keycode = keyboard_readKeycode();
     terminal_putchar(keyboard_getChar(keycode));
     return;
