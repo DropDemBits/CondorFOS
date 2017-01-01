@@ -2,7 +2,7 @@
 *.swp
 
 # Build files
-isodir/boot/condor.kern
+isodir
 sysroot
 *.o
 condor.kern

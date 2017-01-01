@@ -3,15 +3,15 @@
 
 static char* levels[] = {
     "FINE",
-    "DEBG",
-    "NORM",
-    "WARN",
-    "ERRO",
-    "FERR",
+    "DEBUG",
+    "NORMAL",
+    "WARNING",
+    "ERROR",
+    "FATAL",
     " ?? "
 };
 
-void log(int16_t level, char* string, uint16_t length)
+void log(int16_t level, const char* string)
 {
     uint16_t index = level + 2;
     uint16_t color = vga_makeColor(VGA_GREY, VGA_BLACK);
@@ -22,39 +22,40 @@ void log(int16_t level, char* string, uint16_t length)
     if (level == LOG_WARNING) color = vga_makeColor(VGA_YELLOW, VGA_BLACK);
     if (level == LOG_ERROR)   color = vga_makeColor(VGA_LIGHT_RED, VGA_BLACK);
     if (level == LOG_FATAL)   color = vga_makeColor(VGA_RED, VGA_BLACK);
+    if (level >  LOG_FATAL)   color = vga_makeColor(VGA_LIGHT_BLUE, VGA_BLACK);
 
     terminal_putchar_Color('[', vga_makeColor(VGA_WHITE, VGA_BLACK));
-    terminal_puts_Color(levels[index], 4, color);
-    terminal_puts_Color("] ", 2, vga_makeColor(VGA_WHITE, VGA_BLACK));
-    terminal_puts(string, length);
+    terminal_puts_Color(levels[index], color);
+    terminal_puts_Color("] ", vga_makeColor(VGA_WHITE, VGA_BLACK));
+    terminal_puts(string);
 }
 
-void logFErr(char* string, uint16_t length)
+void logFErr(const char* string)
 {
-    log(LOG_FATAL, string, length);
+    log(LOG_FATAL, string);
 }
 
-void logErro(char* string, uint16_t length)
+void logErro(const char* string)
 {
-    log(LOG_ERROR, string, length);
+    log(LOG_ERROR, string);
 }
 
-void logWarn(char* string, uint16_t length)
+void logWarn(const char* string)
 {
-    log(LOG_WARNING, string, length);
+    log(LOG_WARNING, string);
 }
 
-void logNorm(char* string, uint16_t length)
+void logNorm(const char* string)
 {
-    log(LOG_NORMAL, string, length);
+    log(LOG_NORMAL, string);
 }
 
-void logDebg(char* string, uint16_t length)
+void logDebg(const char* string)
 {
-    log(LOG_DEBUG, string, length);
+    log(LOG_DEBUG, string);
 }
 
-void logFine(char* string, uint16_t length)
+void logFine(const char* string)
 {
-    log(LOG_FINE, string, length);
+    log(LOG_FINE, string);
 }

@@ -11,12 +11,12 @@
 #define LOG_DEBUG   -1
 #define LOG_FINE    -2
 
-void log(int16_t level, char* string, uint16_t length);
-void logFErr(char* string, uint16_t length);
-void logErro(char* string, uint16_t length);
-void logWarn(char* string, uint16_t length);
-void logNorm(char* string, uint16_t length);
-void logDebg(char* string, uint16_t length);
-void logFine(char* string, uint16_t length);
+void log(int16_t level, const char* string);
+void logFErr(const char* string);
+void logErro(const char* string);
+void logWarn(const char* string);
+void logNorm(const char* string);
+void logDebg(const char* string);
+void logFine(const char* string);
 
 #endif

@@ -1,4 +1,5 @@
 #include <kernel/tty.h>
+#include <condor.h>
 #include <io.h>
 
 static uint8_t terminal_column;
@@ -92,7 +93,7 @@ void terminal_moveCursor(uint8_t x, uint8_t y)
     outb(0x3D5, (position >> 8));
 }
 
-void terminal_putchar_Color(char uc, uint16_t color)
+void terminal_putchar_Color(const char uc, uint16_t color)
 {
     if (terminal_specialChar(uc)) return;
     terminal_putEntryAt(terminal_column, terminal_row, vga_makeEntry(uc, color));
@@ -104,9 +105,9 @@ void terminal_putchar_Color(char uc, uint16_t color)
     terminal_moveCursor(terminal_column, terminal_row);
 }
 
-void terminal_puts_Color(char* string, uint16_t length, uint16_t color)
+void terminal_puts_Color(const char* string, uint16_t color)
 {
-    for(uint16_t i = 0; i < length; i++) {
+    for(uint16_t i = 0; i < kstrlen(string); i++) {
         if (terminal_specialChar(string[i])) continue;
         terminal_putEntryAt(terminal_column, terminal_row, vga_makeEntry(string[i], color));
         if(++terminal_column >= VGA_WIDTH) {
@@ -118,7 +119,7 @@ void terminal_puts_Color(char* string, uint16_t length, uint16_t color)
     terminal_moveCursor(terminal_column, terminal_row);
 }
 
-void terminal_putchar(char uc)
+void terminal_putchar(const char uc)
 {
     if(terminal_specialChar(uc)) return;
 
@@ -131,9 +132,9 @@ void terminal_putchar(char uc)
     terminal_moveCursor(terminal_column, terminal_row);
 }
 
-void terminal_puts(char* string, uint16_t length)
+void terminal_puts(const char* string)
 {
-    for(uint16_t i = 0; i < length; i++) {
+    for(uint16_t i = 0; i < kstrlen(string); i++) {
         if (terminal_specialChar(string[i])) continue;
         terminal_putEntryAt(terminal_column, terminal_row, vga_makeEntry(string[i], default_color));
         if(++terminal_column >= VGA_WIDTH) {
