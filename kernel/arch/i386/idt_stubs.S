@@ -2,6 +2,19 @@
 .extern isr_handler
 .extern irq_handler
 .extern trap_handler
+
+.macro isr_no_errno
+.endm
+
+.macro isr_errno
+.endm
+
+.macro irq
+.endm
+
+.macro trap
+.endm
+
 .globl isr0
 .globl isr1
 .globl isr2
@@ -248,19 +261,70 @@ irq15:
 
 common_isr:
     pusha
+
+    push %ds
+    push %es
+    push %fs
+    push %gs
+    push %ss
+
+    movl $0, %edx
+    movw $0x10, %dx
+    movw %dx, %ds
+    movw %dx, %es
+    movw %dx, %fs
+    movw %dx, %gs
+    movw %dx, %ss
+
+    push %esp
     call isr_handler
+    addl $4, %esp
+
+    popw %ss
+    popw %gs
+    popw %fs
+    popw %es
+    popw %ds
+
     popa
     addl $8, %esp
     iret
 common_irq:
     pusha
+
+    push %ds
+    push %es
+    push %fs
+    push %gs
+    push %ss
+
+    movw $0x10, %dx
+    movw %dx, %ds
+    movw %dx, %es
+    movw %dx, %fs
+    movw %dx, %gs
+    movw %dx, %ss
+
+    push %esp
     call irq_handler
+    addl $4, %esp
+
+    popw %ss
+    popw %gs
+    popw %fs
+    popw %es
+    popw %ds
+
     popa
     addl $8, %esp
     iret
 common_trap:
     pusha
+
+    push %esp
     call trap_handler
+    addl $4, %esp
+
     popa
     addl $8, %esp
     iret

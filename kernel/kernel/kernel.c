@@ -1,3 +1,8 @@
+#include <multiboot.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
 #include <kernel/keyboard.h>
 #include <kernel/klogger.h>
 #include <kernel/timer_hal.h>
@@ -20,11 +25,32 @@ void kpanic(const char* message)
     for(;;) asm("hlt");
 }
 
-void kinit()
+void kputchar(const char c)
 {
+    terminal_putchar(c);
+}
+
+void kinit(multiboot_info_t *info_struct, uint32_t magic)
+{
+    serial_init(COM1, 0x0003);
+    serial_writes(COM1, "Successfully initialized serial port");
     terminal_init();
     logNorm("Initialized tty\n");
-    serial_init(COM1, 0x0003);
+
+    if(magic != MULTIBOOT_BOOTLOADER_MAGIC)
+    {
+        printf("EAX is %lx\n", magic);
+        printf("EBX is %lx\n", info_struct);
+        kpanic("Not loaded by a multiboot bootloader");
+    }
+
+    printf("Loaded by bootloader %s\n", info_struct->boot_loader_name);
+    if(info_struct->flags & 4)
+    {
+        printf("Bootloader has loaded modules:\n");
+        printf("Number of modules: %d\n", info_struct->mods_count);
+    }
+
     logNorm("Initializing keyboard\n");
     keyboard_init();
     logNorm("Done Initializing keyboard\n");
@@ -44,51 +70,20 @@ void kinit()
 
 void kmain()
 {
-    serial_writes(COM1, "all\n", 4);
-    logFine("Log Test\n");
-    logDebg("Log Test\n");
-    logNorm("Log Test\n");
-    logWarn("Log Test\n");
-    logErro("Log Test\n");
-    logFErr("Log Test\n");
+    asm("xchg %bx, %bx");
+    serial_writes(COM1, "all\n");
     logNorm("Successfully booted kernel\n");
     terminal_puts("\nWelcome to ");
     terminal_puts_Color("CondorFOS!\n", vga_makeColor(VGA_WHITE, VGA_BLACK));
+    printf("%s\n", "aasd");
+    printf("%x\n", 0xFAD5);
+    printf("%lx\n", 0xFEEDBEEF);
 
-    int time = 0;
+    //asm("xchg %bx, %bx");
+    putchar(1/0);
 
-    for(;;) {
-        time = 10-get_timer_seconds();
-        terminal_moveCursor(37, 12);
-        if(time > 9) {
-            terminal_puts("10");
-        }
-        else if(time == -1) {
-            terminal_clear();
-            break;
-        }
-        else {
-            terminal_putchar(' ');
-            terminal_putchar(time+'0');
-        }
-        asm("hlt");
-    }
-
-    uint8_t clr = 1;
-    for(;;)
-    {
-        terminal_setColor(clr, VGA_BLACK);
-        terminal_clear();
-        terminal_moveCursor(39-7, 12);
-        terminal_puts("Happy New YEAR!");
-        asm("hlt");
-        terminal_setColor(VGA_BLACK, clr);
-        terminal_clear();
-        terminal_moveCursor(39-7, 12);
-        terminal_puts("Happy New YEAR!");
-        asm("hlt");
-        sleep(288);
-        sleep(288);
-        if(++clr > 15) clr = 1;
-    }
+    asm("int $12\n\t");
+    for(uint8_t derp = 0; derp < 20; derp++)
+        printf("Hello derp: %d\n", derp);
+    for(;;) asm("hlt");
 }

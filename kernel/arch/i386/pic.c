@@ -89,9 +89,7 @@ void pic_maskIRQ(uint16_t irq)
 
 void pic_clearIRQ(uint16_t irq)
 {
-    asm("xchg %bx, %bx");
     if(irq > 15) return;
-    asm("xchg %bx, %bx");
     uint16_t port = PIC1_DATA;
     if(irq > 7) {
         irq -= 8;

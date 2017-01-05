@@ -10,16 +10,16 @@ void* memcpy(void* dest, const void* src, size_t num)
     return dest;
 }
 
-void* memcpy(void* dest, const void* src, size_t num)
+void* memmove(void* dest, const void* src, size_t num)
 {
     unsigned char *cdest = (unsigned char*) dest;
     unsigned char *csrc = (unsigned char*) src;
-    if(dest < src)
+    if(cdest < csrc)
         for(size_t i = 0; i < num; i++)
-            dest[i] = src[i];
+            cdest[i] = csrc[i];
     else
         for(size_t i = num; i != 0; i--)
-            dest[i-1] = src[i-1];
+            cdest[i-1] = csrc[i-1];
     return dest;
 }
 

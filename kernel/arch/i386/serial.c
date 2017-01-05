@@ -1,3 +1,4 @@
+#include <string.h>
 #include <serial.h>
 
 void serial_init(uint16_t port, uint16_t divisor)
@@ -52,9 +53,9 @@ void serial_writechar(uint16_t port, char uc)
     outb(port, uc);
 }
 
-void serial_writes(uint16_t port, char* string, uint16_t length)
+void serial_writes(uint16_t port, char* string)
 {
     while(serial_writeReady(port) == 0);
 
-    for(uint16_t i = 0; i < length; i++) outb(port, string[i]);
+    for(uint16_t i = 0; i < strlen(string); i++) outb(port, string[i]);
 }

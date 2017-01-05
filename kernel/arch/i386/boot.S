@@ -51,8 +51,11 @@ idtr:
 _start:
 	cli
 
-	# Initialized stack
+	# Initialize stack
 	movl $stack_top, %esp
+	# Preserve EAX and EBX
+	movl %eax, %esi
+	movl %ebx, %edi
 
 	# Load GDT
 	lgdt (gdtr)
@@ -73,6 +76,9 @@ _start:
 	lidt (idtr)
 
 	# Before anything interactive, init kernel
+	# Also push grub stuff
+	push %esi # Multiboot magic thing
+	push %edi # Address to info structure
 	call kinit
 
 	# Go into the main kernel

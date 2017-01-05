@@ -1,13 +1,15 @@
 #include <stdio.h>
-#ifdef LIBK_BUILD
+#ifdef __LIBK_BUILD
+//extern void kputchar(const char c);
 #include <condor.h>
 #endif
 
-void putchar(const char c)
+int putchar(int ic)
 {
-    #ifdef LIBK_BUILD
-        kputchar(c);
+    #ifdef __LIBK_BUILD
+        kputchar(ic);
     #else
         //Put into iostream
     #endif
+    return ic;
 }

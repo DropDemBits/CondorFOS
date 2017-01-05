@@ -4,13 +4,20 @@
 # Build files
 isodir
 sysroot
+userland/programs/bin
+userland/programs/obj
 *.o
+*.a
 condor.kern
 condor.iso
 
 # Bochs stuff
+bochsrc
 logfile.txt
 com1.txt
+com2.txt
+com3.txt
+com4.txt
 
 # Code::blocks stuff
 *.cbp

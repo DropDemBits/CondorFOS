@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #ifndef CONDOR_KERNEL_H
 #define CONDOR_KERNEL_H
 
@@ -5,9 +7,9 @@
 
 //Kernel version
 #define KENREL_TYPE_ALPHA 0
-#define KENREL_TYPE_BETA 0
-#define KENREL_TYPE_RC 0
-#define KENREL_TYPE_RELEASE 0
+#define KENREL_TYPE_BETA 1
+#define KENREL_TYPE_RC 2
+#define KENREL_TYPE_RELEASE 3
 
 #define KENREL_MAJOR 0
 #define KENREL_MINOR 1
@@ -17,15 +19,12 @@
 /* Bindings for libk */
 void kexit(int status);
 void kpanic(const char* message);
+void kputchar(const char c);
 
 inline int kstrlen(const char* str)
 {
-    unsigned length = 0;
-    while(*str)
-    {
-        length++;
-        str++;
-    }
+    size_t length = 0;
+    while(str[length]) length++;
     return length;
 }
 

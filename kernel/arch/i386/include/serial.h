@@ -15,6 +15,6 @@ uint8_t serial_writeReady(uint16_t port);
 char serial_readchar(uint16_t port);
 char* serial_reads(uint16_t port, uint16_t length);
 void serial_writechar(uint16_t port, char uc);
-void serial_writes(uint16_t port, char* string, uint16_t length);
+void serial_writes(uint16_t port, char* string);
 
 #endif

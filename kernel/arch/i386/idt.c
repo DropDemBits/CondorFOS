@@ -1,7 +1,9 @@
-#include <idt.h>
+#include <kernel/idt.h>
 #include <kernel/klogger.h>
 #include <kernel/pic_hal.h>
 #include <condor.h>
+#include <stdio.h>
+#include <serial.h>
 
 // ISRs
 extern void isr0();
@@ -64,7 +66,7 @@ static char* predefMSGS[] = {
     "Invalid Opcode",
     "Device not available",
     "Double Fault",
-    "CSegment Overrun",
+    "FPU Segment Overrun (INVALID)",
     "Invalid TSS",
     "Invalid Segment",
     "Stack Segment Fault",
@@ -87,69 +89,96 @@ static char* predefMSGS[] = {
     "Intel Reserved",
     "Security Exception",
     "Intel Reserved",
+    "Invalid Excepion",
 };
 static uint32_t* descriptors;
 
-void isr_handler(struct CPUStack stack_cpu, struct Pusha stack_pusha)
+static char* getTable(int table)
 {
-    uint16_t int_num = 0;
-    uint16_t err_code = 0;
+    if(table & 4) return "LDT";
+    else return "GDT";
+}
 
-    asm("movl %%esp, %%esi\n\t"
-        "addl $36, %%esi\n\t"
-        "movl (%%esi), %0\n\t"
-        "addl $4, %%esi\n\t"
-        "movl (%%esi), %1\n\t"
-        :"=ra"(int_num), "=rd"(err_code));
+static void default_div0_isr(uint32_t* esp)
+{
+    //Increment eip by two bytes to skip over div instruction
+    *(esp+15) += 2;
+    return;
+}
+
+static void default_div0_isr(uint32_t* esp)
+{
+    //Just return, nothing special
+    return;
+}
+
+void isr_handler(uint32_t* esp)
+{
+    uint32_t int_num =  *(esp+13) & 0xFFFF;
+    uint32_t err_code = *(esp+14) & 0xFFFF;
 
     if(!isrs[int_num]) {
-        if(int_num > 31) int_num = 31;
+        printf("ESP: %#lx, %#lx\n", esp, *esp);
+        if(int_num > 31) int_num = 32;
+
+        //Registers
+        uint16_t cs =     *(esp+16) & 0xFFFF;
+        uint16_t ds =     *(esp+ 4) & 0xFFFF;
+        uint16_t es =     *(esp+ 3) & 0xFFFF;
+        uint16_t fs =     *(esp+ 2) & 0xFFFF;
+        uint16_t gs =     *(esp+ 1) & 0xFFFF;
+        uint16_t ss =     *(esp+ 0) & 0xFFFF;
+        uint32_t eflags = *(esp+17) & 0xFFFF;
+        uint32_t eip =    *(esp+15);
+
+        //Dump Registers:cf78
+        printf("BEGIN DUMP:\n");
+        printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n",
+                *(esp+12),*(esp+ 9),*(esp+11),*(esp+10));
+        printf("ESP: %#lx, EBP: %#lx, ESI: %#lx, EDI: %#lx\n",
+                *(esp+ 8),*(esp+ 7),*(esp+ 6),*(esp+ 5));
+        printf("SEGMENT REGS: VALUE (INDEX|TABLE|RPL)\n");
+        printf("CS: %x (%d|%s|%d)\n", cs, cs >> 4, getTable(cs), cs & 0x2);
+        printf("DS: %x (%d|%s|%d)\n", ds, ds >> 4, getTable(ds), ds & 0x2);
+        printf("ES: %x (%d|%s|%d)\n", es, es >> 4, getTable(es), es & 0x2);
+        printf("FS: %x (%d|%s|%d)\n", fs, fs >> 4, getTable(fs), fs & 0x2);
+        printf("GS: %x (%d|%s|%d)\n", gs, gs >> 4, getTable(gs), gs & 0x2);
+        printf("SS: %x (%d|%s|%d)\n", ss, ss >> 4, getTable(ss), ss & 0x2);
+        printf("EFLAGS: %#lx\n", eflags);
+        printf("EIP: %#lx\n", eip);
+        printf("ERR: %#x\n", err_code);
         kpanic(predefMSGS[int_num]);
     } else {
-        void (*handler)(struct CPUStack, struct Pusha);
+        void (*handler)(uint32_t*);
         if(isrs[int_num]) {
             handler = (void*) isrs[int_num];
-            handler(stack_cpu, stack_pusha);
+            handler(esp);
         }
     }
 }
 
-void irq_handler(struct CPUStack stack_cpu)
+void irq_handler(uint32_t* esp)
 {
-    uint16_t int_num = 0;
-    uint16_t err_code = 0;
+    //TODO Figure out int number offset in stack
+    uint16_t int_num = *(esp-4);
 
-    asm("movl %%esp, %%esi\n\t"
-        "addl $40, %%esi\n\t"
-        "movl (%%esi), %0\n\t"
-        "addl $4, %%esi\n\t"
-        "movl (%%esi), %1\n\t"
-        :"=ra"(int_num), "=rd"(err_code));
-
-    void (*handler)(struct CPUStack);
+    void (*handler)(uint32_t*);
     if(isrs[int_num]) {
         handler = (void*) isrs[int_num];
-        handler(stack_cpu);
+        handler(esp);
     }
     ic_ack(int_num-32);
 }
 
-void trap_handler(struct CPUStack stack_cpu)
+void trap_handler(uint32_t* esp)
 {
-    uint16_t int_num = 0;
-    uint16_t err_code = 0;
+    //TODO Figure out int number offset in stack
+    uint16_t int_num = *(esp-4);
 
-    asm("movl %%esp, %%esi\n\t"
-        "addl $36, %%esi\n\t"
-        "movl (%%esi), %0\n\t"
-        "addl $4, %%esi\n\t"
-        "movl (%%esi), %1\n\t"
-        :"=ra"(int_num), "=rd"(err_code));
-
-    void (*handler)(struct CPUStack);
+    void (*handler)(uint32_t*);
     if(isrs[int_num]) {
         handler = (void*) isrs[int_num];
-        handler(stack_cpu);
+        handler(esp);
     }
 }
 
@@ -227,9 +256,9 @@ void idt_init(uint32_t memory_location)
     idt_registerInterrupt(45, (uint32_t)irq13, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(46, (uint32_t)irq14, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(47, (uint32_t)irq15, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    //Mask all irqs but the pit irq
-    //ic_maskIRQ(0);
-    //ic_maskIRQ(1);
+    //Mask all but irqs 0, and 1
+    ic_clearIRQ(0);
+    ic_clearIRQ(1);
     ic_maskIRQ(2);
     ic_maskIRQ(3);
     ic_maskIRQ(4);
@@ -244,4 +273,8 @@ void idt_init(uint32_t memory_location)
     ic_maskIRQ(13);
     ic_maskIRQ(14);
     ic_maskIRQ(15);
+
+    //Add default ISRs
+    idt_addISR(0, (uint32_t)default_div0_isr);
+    idt_addISR(3, (uint32_t)default_int3_isr);
 }

@@ -40,7 +40,7 @@ static uint8_t terminal_specialChar(const char c)
         if((flags >> 1) == 0)
         {
             terminal_column = 0;
-            if(++terminal_row > VGA_HEIGHT)
+            if(++terminal_row >= VGA_HEIGHT)
             {
                 terminal_scroll();
             }
@@ -148,7 +148,20 @@ void terminal_puts(const char* string)
 
 void terminal_scroll(void)
 {
-    terminal_row = 0;
+    //Push all the lines up by one
+    for(size_t index = 0; index < VGA_WIDTH * VGA_HEIGHT; index++)
+    {
+        vga_buffer[index] = vga_buffer[index+VGA_WIDTH];
+    }
+
+    //Clear last line
+    for(size_t x = 0; x < VGA_WIDTH; x++)
+    {
+        //uint16_t y = (VGA_HEIGHT-1) * VGA_WIDTH;
+        vga_buffer[x+(24*VGA_WIDTH)] = 0x0000;//vga_makeEntry('\0', default_color);
+    }
+
+    terminal_row--;
 }
 
 void terminal_setColor(uint8_t fg, uint8_t bg)

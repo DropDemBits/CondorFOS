@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <vga.h>
+#include <kernel/vga.h>
 
 #ifndef TTY_H
 #define TTY_H

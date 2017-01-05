@@ -12,8 +12,9 @@ extern "C"
 #define EOF -1
 
 int printf(const char *format, ...);
-void puts(const char *str);
-void putchar(const char c);
+int sprintf(char *dest, const char *format, ...);
+int puts(const char *str);
+int putchar(int ic);
 
 #ifdef __cplusplus
 }

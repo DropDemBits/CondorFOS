@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 //Commons
 #ifdef __cplusplus
 extern "C"
@@ -7,12 +9,6 @@ extern "C"
 #ifdef NULL
 #   undef NULL
 #   define NULL (void*)0
-#endif
-
-// Typedefs
-#ifndef COMMON_TYPES
-#define COMMON_TYPES
-    typedef unsigned size_t;
 #endif
 
 #ifdef __cplusplus
