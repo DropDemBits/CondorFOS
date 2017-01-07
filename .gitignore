@@ -22,3 +22,6 @@ com4.txt
 # Code::blocks stuff
 *.cbp
 *.layout
+
+# Netbeans stuff
+nbproject/

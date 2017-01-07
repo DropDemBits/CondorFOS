@@ -38,22 +38,22 @@ extern void isr28();
 extern void isr29();
 extern void isr30();
 extern void isr31();
-extern void irq0();
-extern void irq1();
-extern void irq2();
-extern void irq3();
-extern void irq4();
-extern void irq5();
-extern void irq6();
-extern void irq7();
-extern void irq8();
-extern void irq9();
-extern void irq10();
-extern void irq11();
-extern void irq12();
-extern void irq13();
-extern void irq14();
-extern void irq15();
+extern void isr32();
+extern void isr33();
+extern void isr34();
+extern void isr35();
+extern void isr36();
+extern void isr37();
+extern void isr38();
+extern void isr39();
+extern void isr40();
+extern void isr41();
+extern void isr42();
+extern void isr43();
+extern void isr44();
+extern void isr45();
+extern void isr46();
+extern void isr47();
 
 static uint32_t isrs[256];
 static char* predefMSGS[] = {
@@ -102,48 +102,53 @@ static char* getTable(int table)
 static void default_div0_isr(uint32_t* esp)
 {
     //Increment eip by two bytes to skip over div instruction
-    *(esp+15) += 2;
+    *(esp+14) += 2;
     return;
 }
 
-static void default_div0_isr(uint32_t* esp)
+static void default_int3_isr(uint32_t* esp)
 {
     //Just return, nothing special
+    *(esp+14) += 2;
     return;
 }
 
 void isr_handler(uint32_t* esp)
 {
-    uint32_t int_num =  *(esp+13) & 0xFFFF;
-    uint32_t err_code = *(esp+14) & 0xFFFF;
+    uint32_t int_num =  *(esp+12) & 0xFFFF;
+    uint32_t err_code = *(esp+13) & 0xFFFF;
 
     if(!isrs[int_num]) {
         printf("ESP: %#lx, %#lx\n", esp, *esp);
         if(int_num > 31) int_num = 32;
 
         //Registers
-        uint16_t cs =     *(esp+16) & 0xFFFF;
-        uint16_t ds =     *(esp+ 4) & 0xFFFF;
-        uint16_t es =     *(esp+ 3) & 0xFFFF;
-        uint16_t fs =     *(esp+ 2) & 0xFFFF;
-        uint16_t gs =     *(esp+ 1) & 0xFFFF;
-        uint16_t ss =     *(esp+ 0) & 0xFFFF;
-        uint32_t eflags = *(esp+17) & 0xFFFF;
-        uint32_t eip =    *(esp+15);
-
-        //Dump Registers:cf78
+        uint16_t cs =     *(esp+15) & 0xFFFF;
+        uint16_t ds =     *(esp+ 3) & 0xFFFF;
+        uint16_t es =     *(esp+ 2) & 0xFFFF;
+        uint16_t fs =     *(esp+ 1) & 0xFFFF;
+        uint16_t gs =     *(esp+ 0) & 0xFFFF;
+        uint32_t eflags = *(esp+16) & 0xFFFF;
+        uint32_t eip =    *(esp+14);
+        
+        //Serial dump int num
+        uint32_t print_int = int_num;
+        serial_writechar(COM1, print_int % 10 + '0');
+        print_int /= 10;
+        serial_writechar(COM1, print_int % 10 + '0');
+        
+        //Dump Registers:
         printf("BEGIN DUMP:\n");
         printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n",
-                *(esp+12),*(esp+ 9),*(esp+11),*(esp+10));
+                *(esp+11),*(esp+ 8),*(esp+10),*(esp+ 9));
         printf("ESP: %#lx, EBP: %#lx, ESI: %#lx, EDI: %#lx\n",
-                *(esp+ 8),*(esp+ 7),*(esp+ 6),*(esp+ 5));
+                *(esp+ 7),*(esp+ 6),*(esp+ 5),*(esp+ 4));
         printf("SEGMENT REGS: VALUE (INDEX|TABLE|RPL)\n");
         printf("CS: %x (%d|%s|%d)\n", cs, cs >> 4, getTable(cs), cs & 0x2);
         printf("DS: %x (%d|%s|%d)\n", ds, ds >> 4, getTable(ds), ds & 0x2);
         printf("ES: %x (%d|%s|%d)\n", es, es >> 4, getTable(es), es & 0x2);
         printf("FS: %x (%d|%s|%d)\n", fs, fs >> 4, getTable(fs), fs & 0x2);
         printf("GS: %x (%d|%s|%d)\n", gs, gs >> 4, getTable(gs), gs & 0x2);
-        printf("SS: %x (%d|%s|%d)\n", ss, ss >> 4, getTable(ss), ss & 0x2);
         printf("EFLAGS: %#lx\n", eflags);
         printf("EIP: %#lx\n", eip);
         printf("ERR: %#x\n", err_code);
@@ -159,8 +164,7 @@ void isr_handler(uint32_t* esp)
 
 void irq_handler(uint32_t* esp)
 {
-    //TODO Figure out int number offset in stack
-    uint16_t int_num = *(esp-4);
+    uint16_t int_num = *(esp+12) & 0xFFFF;
 
     void (*handler)(uint32_t*);
     if(isrs[int_num]) {
@@ -172,8 +176,8 @@ void irq_handler(uint32_t* esp)
 
 void trap_handler(uint32_t* esp)
 {
-    //TODO Figure out int number offset in stack
-    uint16_t int_num = *(esp-4);
+    //TODO: Figure out int number offset in stack
+    uint16_t int_num = *(esp+12) & 0xFFFF;
 
     void (*handler)(uint32_t*);
     if(isrs[int_num]) {
@@ -239,23 +243,23 @@ void idt_init(uint32_t memory_location)
     idt_registerInterrupt(30, (uint32_t)isr30, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(31, (uint32_t)isr31, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     ic_init(32);
-    //Hardware intrs
-    idt_registerInterrupt(32, (uint32_t)irq0,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(33, (uint32_t)irq1,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(34, (uint32_t)irq2,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(35, (uint32_t)irq3,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(36, (uint32_t)irq4,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(37, (uint32_t)irq5,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(38, (uint32_t)irq6,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(39, (uint32_t)irq7,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(40, (uint32_t)irq8,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(41, (uint32_t)irq9,  0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(42, (uint32_t)irq10, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(43, (uint32_t)irq11, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(44, (uint32_t)irq12, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(45, (uint32_t)irq13, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(46, (uint32_t)irq14, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(47, (uint32_t)irq15, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    //Hardware interrupts
+    idt_registerInterrupt(32, (uint32_t)isr32, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(33, (uint32_t)isr33, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(34, (uint32_t)isr34, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(35, (uint32_t)isr35, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(36, (uint32_t)isr36, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(37, (uint32_t)isr37, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(38, (uint32_t)isr38, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(39, (uint32_t)isr39, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(40, (uint32_t)isr40, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(41, (uint32_t)isr41, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(42, (uint32_t)isr42, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(43, (uint32_t)isr43, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(44, (uint32_t)isr44, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(45, (uint32_t)isr45, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(46, (uint32_t)isr46, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(47, (uint32_t)isr47, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     //Mask all but irqs 0, and 1
     ic_clearIRQ(0);
     ic_clearIRQ(1);

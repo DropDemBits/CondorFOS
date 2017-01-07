@@ -5,20 +5,13 @@ TARGET_ARCH=i386
 all: build
 
 clean:
-	make -C ./kernel/ -f ./Makefile clean
-	make -C ./libc/ -f ./Makefile clean
-	rm -rf ./isodir ./sysroot
-
+	./clean.sh
 build:
+	./build.sh
+iso:
+	./iso.sh
 
-install:
-	make -C ./libc/ -f ./Makefile install-headers
-	make -C ./kernel/ -f ./Makefile install-headers
-	make -C ./libc/ -f ./Makefile install-binaries
-	make -C ./kernel/ -f ./Makefile install-binaries
-	bash prep_iso.sh
-	make -C ./kernel/ -f ./Makefile iso
-run-bochs: install
+run-bochs: iso
 	bochs -q -rc skip -f bochsrc
-run-qemu: install
+run-qemu: iso
 	qemu-system-i386 -cdrom condor.iso

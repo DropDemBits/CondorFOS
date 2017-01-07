@@ -1,5 +1,7 @@
+
+
+#include <string.h>
 #include <kernel/tty.h>
-#include <condor.h>
 #include <io.h>
 
 static uint8_t terminal_column;
@@ -107,7 +109,7 @@ void terminal_putchar_Color(const char uc, uint16_t color)
 
 void terminal_puts_Color(const char* string, uint16_t color)
 {
-    for(uint16_t i = 0; i < kstrlen(string); i++) {
+    for(uint16_t i = 0; i < strlen(string); i++) {
         if (terminal_specialChar(string[i])) continue;
         terminal_putEntryAt(terminal_column, terminal_row, vga_makeEntry(string[i], color));
         if(++terminal_column >= VGA_WIDTH) {
@@ -134,7 +136,7 @@ void terminal_putchar(const char uc)
 
 void terminal_puts(const char* string)
 {
-    for(uint16_t i = 0; i < kstrlen(string); i++) {
+    for(uint16_t i = 0; i < strlen(string); i++) {
         if (terminal_specialChar(string[i])) continue;
         terminal_putEntryAt(terminal_column, terminal_row, vga_makeEntry(string[i], default_color));
         if(++terminal_column >= VGA_WIDTH) {
@@ -148,19 +150,20 @@ void terminal_puts(const char* string)
 
 void terminal_scroll(void)
 {
+    
+    
     //Push all the lines up by one
-    for(size_t index = 0; index < VGA_WIDTH * VGA_HEIGHT; index++)
+    for(size_t index = VGA_WIDTH; index < VGA_WIDTH * VGA_HEIGHT; index++)
     {
-        vga_buffer[index] = vga_buffer[index+VGA_WIDTH];
+        vga_buffer[index-VGA_WIDTH] = vga_buffer[index];
     }
-
+    
     //Clear last line
     for(size_t x = 0; x < VGA_WIDTH; x++)
     {
-        //uint16_t y = (VGA_HEIGHT-1) * VGA_WIDTH;
-        vga_buffer[x+(24*VGA_WIDTH)] = 0x0000;//vga_makeEntry('\0', default_color);
+        vga_buffer[x+((VGA_HEIGHT-1)*VGA_WIDTH)] = 0x0000;
     }
-
+    
     terminal_row--;
 }
 

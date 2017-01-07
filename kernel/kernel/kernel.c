@@ -62,7 +62,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     logNorm("Initializing Timer\n");
     timer_init();
     logNorm("Done Initializing Timer\n");
-
+    
     //Initialization done, Enable interrupts
     asm("sti");
     logNorm("Done kinit()\n");
@@ -70,7 +70,6 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
 
 void kmain()
 {
-    asm("xchg %bx, %bx");
     serial_writes(COM1, "all\n");
     logNorm("Successfully booted kernel\n");
     terminal_puts("\nWelcome to ");
@@ -78,12 +77,10 @@ void kmain()
     printf("%s\n", "aasd");
     printf("%x\n", 0xFAD5);
     printf("%lx\n", 0xFEEDBEEF);
-
-    //asm("xchg %bx, %bx");
-    putchar(1/0);
-
-    asm("int $12\n\t");
-    for(uint8_t derp = 0; derp < 20; derp++)
+    
+    for(condor_ubyte_t derp = 20; derp != 0xFF; derp--)
+    {
         printf("Hello derp: %d\n", derp);
+    }
     for(;;) asm("hlt");
 }

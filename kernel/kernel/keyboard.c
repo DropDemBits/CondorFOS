@@ -1,8 +1,8 @@
-#include <stdint.h>
 #include <kernel/keyboard.h>
 #include <kernel/idt.h>
 #include <kernel/timer_hal.h>
 #include <kernel/tty.h>
+#include <condor.h>
 
 static char US_KEYBOARD[256] = {
     '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',
@@ -83,7 +83,7 @@ void keyboard_isr()
 
 void keyboard_init(void)
 {
-    idt_addISR(33, (uint32_t) keyboard_isr);
+    idt_addISR(33, (condor_udword_t) keyboard_isr);
     keyboard_setCharmap(US_KEYBOARD);
 }
 
@@ -93,7 +93,7 @@ void keyboard_setCharmap(char ncharmap[])
         charmap[i] = ncharmap[i];
 }
 
-char keyboard_getChar(uint8_t keycode)
+char keyboard_getChar(condor_ubyte_t keycode)
 {
     return 'a'+(keycode-keycode);//charmap[keycode];
 }

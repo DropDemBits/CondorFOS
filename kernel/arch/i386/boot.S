@@ -16,6 +16,10 @@ stack_bottom:
 .skip 16384 # Reserve 16KiB
 stack_top:
 
+tss_start:
+.skip 0x68 # Size of tss
+tss_end:
+
 .section .data
 # GDT sections
 gdt_data:
@@ -26,9 +30,11 @@ gdt_data:
 	# Kmode data segment
 	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00
 	# Usermode code segment
-	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFE, 0xCF, 0x00
+	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFA, 0xCF, 0x00
 	# Usermode data segment
 	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xF2, 0xCF, 0x00
+        #TSS
+        .long tss_start, 0
 gdt_end:
 
 gdtr:
@@ -76,7 +82,7 @@ _start:
 	lidt (idtr)
 
 	# Before anything interactive, init kernel
-	# Also push grub stuff
+	# Also push multiboot stuff
 	push %esi # Multiboot magic thing
 	push %edi # Address to info structure
 	call kinit

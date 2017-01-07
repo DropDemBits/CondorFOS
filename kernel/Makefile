@@ -16,7 +16,7 @@ ISO=condor.iso
 KERN=condor.kern
 
 CC=i686-elf-gcc
-CFLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Wextra -g $(addprefix -I,$(INCLUDE_DIRS))
+CFLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Werror -Wextra -g $(addprefix -I,$(INCLUDE_DIRS))
 LDFLAGS=-ffreestanding -O2 -L$(SYSROOT)$(PREFIX)/lib $(addprefix -I,$(INCLUDE_DIRS)) $(ARCH_LDFLAGS)
 LIBS=-nostdlib -lgcc -lk
 
