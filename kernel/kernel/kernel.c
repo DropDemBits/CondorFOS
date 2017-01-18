@@ -5,10 +5,15 @@
 
 #include <kernel/keyboard.h>
 #include <kernel/klogger.h>
+#include <kernel/pmm.h>
 #include <kernel/timer_hal.h>
 #include <kernel/tty.h>
 #include <condor.h>
 #include <serial.h>
+
+extern uint32_t kernel_end;
+
+static char* mmap_types[6] = {"INV", "Available", "Reserved", "ACPI Reclaimable", "NVS", "BadRam"};
 
 void kexit(int status)
 {
@@ -43,7 +48,33 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         printf("EBX is %lx\n", info_struct);
         kpanic("Not loaded by a multiboot bootloader");
     }
-
+    
+    if(info_struct->flags & (1 << 6))
+    {
+        printf("Memory Size: Low: %ldkb, %ldkb, Total: %ldkb\n", info_struct->mem_lower, info_struct->mem_upper, info_struct->mem_lower+(info_struct->mem_upper));
+         
+        pmm_setRegionBase((((physical_addr_t)&kernel_end) & 0xFFFFF000) + 0x1000);
+        multiboot_memory_map_t* mmap = (multiboot_memory_map_t*) info_struct->mmap_addr;
+        
+        while(((udword_t)mmap) < info_struct->mmap_addr + info_struct->mmap_length)
+        {
+            //Process MMAP
+            
+            if(mmap->type > MULTIBOOT_MEMORY_AVAILABLE) {
+                pmm_setRegion((udword_t)mmap->addr, (udword_t)mmap->len);
+            }
+            printf("base_addr = 0x%lx, length = 0x%lx, %s\n", (udword_t)mmap->addr, (udword_t)mmap->len, mmap_types[mmap->type]);
+            
+            mmap = (multiboot_memory_map_t*) ((unsigned int)mmap + mmap->size + sizeof(mmap->size));
+        }
+    }
+    
+    if(info_struct->flags & 0x1)
+    {
+        pmm_init(1024+info_struct->mem_lower+(info_struct->mem_upper*64), (((physical_addr_t)&kernel_end) & 0xFFFFF000)+0x2000);
+        printf("Addrs: %lx, %lx, %lx\n", (physical_addr_t)&kernel_end, (((physical_addr_t)&kernel_end) & 0xFFFFF000) + 0x1000, (((physical_addr_t)&kernel_end) & 0xFFFFF000) + 0x2000);
+    }
+    
     printf("Loaded by bootloader %s\n", info_struct->boot_loader_name);
     if(info_struct->flags & 4)
     {
@@ -65,7 +96,6 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     
     //Initialization done, Enable interrupts
     asm("sti");
-    logNorm("Done kinit()\n");
 }
 
 void kmain()
@@ -74,13 +104,6 @@ void kmain()
     logNorm("Successfully booted kernel\n");
     terminal_puts("\nWelcome to ");
     terminal_puts_Color("CondorFOS!\n", vga_makeColor(VGA_WHITE, VGA_BLACK));
-    printf("%s\n", "aasd");
-    printf("%x\n", 0xFAD5);
-    printf("%lx\n", 0xFEEDBEEF);
     
-    for(condor_ubyte_t derp = 20; derp != 0xFF; derp--)
-    {
-        printf("Hello derp: %d\n", derp);
-    }
     for(;;) asm("hlt");
 }

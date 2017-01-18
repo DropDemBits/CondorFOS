@@ -19,24 +19,24 @@
 //Typedefs
 
 //Unsigned types
-typedef unsigned long long condor_uqword_t;
-typedef unsigned long condor_udword_t;
-typedef unsigned condor_uword_t;
-typedef unsigned char condor_ubyte_t;
-typedef unsigned char condor_uchar_t;
+typedef unsigned long long uqword_t;
+typedef unsigned long udword_t;
+typedef unsigned uword_t;
+typedef unsigned char ubyte_t;
+typedef unsigned char uchar_t;
 
 //Signed types
-typedef   signed long long condor_sqword_t;
-typedef   signed long condor_sdword_t;
-typedef   signed condor_sword_t;
-typedef   signed char condor_sbyte_t;
-typedef   signed char condor_schar_t;
+typedef   signed long long sqword_t;
+typedef   signed long sdword_t;
+typedef   signed sword_t;
+typedef   signed char sbyte_t;
+typedef   signed char schar_t;
 
-typedef   signed long long condor_qword_t;
-typedef   signed long condor_dword_t;
-typedef   signed condor_word_t;
-typedef   signed char condor_byte_t;
-typedef   signed char condor_char_t;
+typedef   signed long long qword_t;
+typedef   signed long dword_t;
+typedef   signed word_t;
+typedef   signed char byte_t;
+typedef   signed char char_t;
 
 /* Bindings for libk */
 void kexit(int status);

@@ -21,6 +21,7 @@ stdlib/abort.o \
 stdlib/exit.o \
 string/memcmp.o \
 string/memcpy.o \
+string/memmove.o \
 string/memset.o \
 string/strlen.o \
 

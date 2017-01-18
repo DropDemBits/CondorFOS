@@ -3,11 +3,11 @@
 
 static char* levels[] = {
     "FINE",
-    "DEBUG",
-    "NORMAL",
-    "WARNING",
-    "ERROR",
-    "FATAL",
+    "DEBG",
+    " OK ",
+    "WARN",
+    "ERRO",
+    "FERR",
     " ?? "
 };
 

@@ -126,9 +126,9 @@ void terminal_putchar(const char uc)
     if(terminal_specialChar(uc)) return;
 
     terminal_putEntryAt(terminal_column, terminal_row, vga_makeEntry(uc, default_color));
-    if(++terminal_column > VGA_WIDTH) {
+    if(++terminal_column >= VGA_WIDTH) {
         terminal_column = 0;
-        if(++terminal_row > VGA_HEIGHT)
+        if(++terminal_row >= VGA_HEIGHT)
             terminal_scroll();
     }
     terminal_moveCursor(terminal_column, terminal_row);
