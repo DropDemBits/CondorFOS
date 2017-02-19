@@ -65,10 +65,8 @@ void pmm_setRegionBase(physical_addr_t region_base)
 
 void pmm_init(size_t memory_size, physical_addr_t memory_base)
 {
-    printf("0x%lx\n", memory_size);
     stack_base = (physical_addr_t*)memory_base;
     
-    asm("xchg %bx, %bx");
     stack_pushAddr(0);
     
     for(physical_addr_t addr = 0; addr <= memory_size; addr += 4096)

@@ -105,9 +105,5 @@ void kmain()
     terminal_puts("\nWelcome to ");
     terminal_puts_Color("CondorFOS!\n", vga_makeColor(VGA_WHITE, VGA_BLACK));
     
-    for(udword_t loop = 0; loop < 64; loop++) {
-        printf("Addr: 0x%lx ", pmalloc());
-    }
-    
     for(;;) asm("hlt");
 }
