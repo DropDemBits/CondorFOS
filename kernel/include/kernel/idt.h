@@ -33,9 +33,23 @@ typedef struct
     uint32_t eflags;
 } stack_state_t;
 
+/**
+ * Adds an ISR handler
+ * @param int_num The interrupt to service
+ * @param addr The address to the handler
+ */
 void idt_addISR(uint16_t int_num, uint32_t addr);
+
+/**
+ * Removes an ISR handler
+ * @param int_num The interrupt to detach the handler from
+ */
 void idt_clearISR(uint16_t int_num);
 
+/**
+ * Initializes the IDT
+ * @param memory_location The location of the IDT base
+ */
 void idt_init(uint32_t memory_location);
 
 #endif

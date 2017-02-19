@@ -11,12 +11,47 @@
 #define LOG_DEBUG   -1
 #define LOG_FINE    -2
 
+/**
+ * Prints an event
+ * @param level The level of the log
+ * @param string The string to print
+ */
 void log(int16_t level, const char* string);
+
+/**
+ * Prints a fatal error
+ * @param string The string to print
+ */
 void logFErr(const char* string);
+
+/**
+ * Prints an error
+ * @param string The string to print
+ */
 void logErro(const char* string);
+
+/**
+ * Prints a warning
+ * @param string The string to print
+ */
 void logWarn(const char* string);
+
+/**
+ * Prints some information
+ * @param string The string to print
+ */
 void logNorm(const char* string);
+
+/**
+ * Prints debug information
+ * @param string The string to print
+ */
 void logDebg(const char* string);
+
+/**
+ * Prints deep debugging information
+ * @param string The string to print
+ */
 void logFine(const char* string);
 
 #endif

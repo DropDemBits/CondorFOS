@@ -8,32 +8,14 @@
 #include <kernel/pmm.h>
 #include <kernel/timer_hal.h>
 #include <kernel/tty.h>
+#include <kernel/vmm.h>
 #include <condor.h>
 #include <serial.h>
 
-extern uint32_t kernel_end;
+extern uint32_t kernel_start;
+uint32_t kernel_end;
 
 static char* mmap_types[6] = {"INV", "Available", "Reserved", "ACPI Reclaimable", "NVS", "BadRam"};
-
-void kexit(int status)
-{
-    if(!status)
-        kpanic("Placeholder");
-    else
-        kpanic("Abnormal exit");
-}
-
-void kpanic(const char* message)
-{
-    logFErr(message);
-    asm("cli");
-    for(;;) asm("hlt");
-}
-
-void kputchar(const char c)
-{
-    terminal_putchar(c);
-}
 
 void kinit(multiboot_info_t *info_struct, uint32_t magic)
 {
@@ -49,15 +31,24 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         kpanic("Not loaded by a multiboot bootloader");
     }
     
+    printf("Kernel (Start: %lx, End: %lx)\n", &kernel_start, &kernel_end);
+    
+    if(info_struct->flags & (1 << 5)) {
+        kernel_end = info_struct->u.elf_sec.addr + info_struct->u.elf_sec.size;
+    }
+    
+    int mem_pages = 1;
     if(info_struct->flags & (1 << 6))
     {
         printf("Memory Size: Low: %ldkb, %ldkb, Total: %ldkb\n", info_struct->mem_lower, info_struct->mem_upper, info_struct->mem_lower+(info_struct->mem_upper));
          
-        pmm_setRegionBase((((physical_addr_t)&kernel_end) & 0xFFFFF000) + 0x1000);
+        pmm_setRegionBase(((udword_t)kernel_end & 0xFFFFF000) + 0x1000);
         multiboot_memory_map_t* mmap = (multiboot_memory_map_t*) info_struct->mmap_addr;
         
         while(((udword_t)mmap) < info_struct->mmap_addr + info_struct->mmap_length)
         {
+            mem_pages++;
+            
             //Process MMAP
             
             if(mmap->type > MULTIBOOT_MEMORY_AVAILABLE) {
@@ -69,11 +60,20 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         }
     }
     
+    //Remove regions already occupied/mapped
+    pmm_setRegion(0x0, 0x00800000);
+    
     if(info_struct->flags & 0x1)
     {
-        pmm_init(1024+info_struct->mem_lower+(info_struct->mem_upper*64), (((physical_addr_t)&kernel_end) & 0xFFFFF000)+0x2000);
-        printf("Addrs: %lx, %lx, %lx\n", (physical_addr_t)&kernel_end, (((physical_addr_t)&kernel_end) & 0xFFFFF000) + 0x1000, (((physical_addr_t)&kernel_end) & 0xFFFFF000) + 0x2000);
+        //Initialize VMM for pf handling after PMM
+        logNorm("Initializing VMM\n");
+        vmm_init();
+        
+        logNorm("Initializing PMM\n");
+        pmm_init((info_struct->mem_lower+(info_struct->mem_upper)) << 10, ((udword_t)kernel_end & 0xFFFFF000) + (0x1000*mem_pages));
     }
+    else kpanic("wut");
+    
     
     printf("Loaded by bootloader %s\n", info_struct->boot_loader_name);
     if(info_struct->flags & 4)
@@ -104,6 +104,10 @@ void kmain()
     logNorm("Successfully booted kernel\n");
     terminal_puts("\nWelcome to ");
     terminal_puts_Color("CondorFOS!\n", vga_makeColor(VGA_WHITE, VGA_BLACK));
+    
+    for(udword_t loop = 0; loop < 64; loop++) {
+        printf("Addr: 0x%lx ", pmalloc());
+    }
     
     for(;;) asm("hlt");
 }

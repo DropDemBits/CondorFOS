@@ -46,7 +46,7 @@ iso: $(KERN)
 	cp $(KERN) ../isodir/boot/$(KERN)
 	i686-grub-mkrescue -o ../$(ISO) ../isodir
 clean:
-	rm -f $(OBJS) $(ARCH_OBJ) ../$(ISO) $(KERN)
+	rm -f $(OBJS) $(ARCH_OBJ) ../$(ISO) $(KERN) ./*.i ./*.ii
 
 install-headers:
 	mkdir -p $(SYSROOT)$(PREFIX)/include

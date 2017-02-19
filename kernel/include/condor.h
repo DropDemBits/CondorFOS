@@ -13,7 +13,7 @@
 
 #define KENREL_MAJOR 0
 #define KENREL_MINOR 1
-#define KENREL_PATCH 0
+#define KENREL_PATCH 1
 #define KERNEL_TYPE  KENREL_TYPE_ALPHA
 
 //Typedefs
@@ -38,9 +38,20 @@ typedef   signed word_t;
 typedef   signed char byte_t;
 typedef   signed char char_t;
 
-/* Bindings for libk */
+extern uqword_t KERNEL_VIRTUAL_BASE;
+
+/* Utilities */
 void kexit(int status);
 void kpanic(const char* message);
 void kputchar(const char c);
+void kdump_useStack(uqword_t* esp);
+void kdump_useRegs(uqword_t eip);
+void kdumpStack(uqword_t* esp, udword_t ebp);
+
+//Optimized memory functions
+/*
+void* kmemcpy(void* dest, const void* src, size_t num);
+void* kmemmove(void* dest, const void* src, size_t num);
+*/
 
 #endif

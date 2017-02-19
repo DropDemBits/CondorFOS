@@ -37,13 +37,12 @@ char serial_readchar(uint16_t port)
     return inb(port);
 }
 
-char* serial_reads(uint16_t port, uint16_t length)
+char* serial_reads(uint16_t port, uint16_t length, char* dest)
 {
     while(serial_readReady(port) == 0);
-    char* store = (char*) 0x500;
 
-    for(uint16_t i = 0; i < length; i++) store[i] = inb(port);
-    return store;
+    for(uint16_t i = 0; i < length; i++) dest[i] = inb(port);
+    return dest;
 }
 
 void serial_writechar(uint16_t port, char uc)
@@ -53,7 +52,7 @@ void serial_writechar(uint16_t port, char uc)
     outb(port, uc);
 }
 
-void serial_writes(uint16_t port, char* string)
+void serial_writes(uint16_t port, const char* string)
 {
     while(serial_writeReady(port) == 0);
 

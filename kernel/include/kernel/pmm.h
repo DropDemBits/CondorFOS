@@ -71,7 +71,15 @@ void pmm_setRegion(physical_addr_t region_start, size_t region_size);
 void pmm_clearRegion(physical_addr_t region_start, size_t region_size);
 
 /**
- * physical_ptr_t pmalloc();
+ * pmm_isInited(void);
+ * 
+ * Checks if the PMM has initialized
+ * @return The initialization status of the PMM
+ */
+ubyte_t pmm_isInited(void);
+
+/**
+ * physical_addr_t* pmalloc();
  * 
  * Allocates page size blocks
  * @return The address to the allocated block

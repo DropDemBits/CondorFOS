@@ -5,8 +5,10 @@ SECTIONS
 {
 	/* Load the kernel at 1M */
 	. = 1M;
-
-	/* Put the multiboot header and code sections at the very beginning of the file */
+        
+        kernel_start = .;
+	
+        /* Put the multiboot header and code sections at the very beginning of the file */
 	.text BLOCK(4K) : ALIGN(4K) {
 		*(.multiboot)
 		*(.text)
@@ -16,6 +18,8 @@ SECTIONS
 	.rodata BLOCK(4K) : ALIGN(4K) {
 		*(.rodata)
 	}
+        
+        ro_end = .;
 
 	/* Read-Write data */
 	.data BLOCK(4K) : ALIGN(4K) {
@@ -28,6 +32,7 @@ SECTIONS
 		*(.bss)
 		*(.bootstrap_stack)
 	}
-        kernel_end = .;
-
+        
 }
+
+kernel_end = .;

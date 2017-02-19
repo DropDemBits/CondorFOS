@@ -1,5 +1,6 @@
 #include <kernel/klogger.h>
 #include <kernel/tty.h>
+#include <serial.h>
 
 static char* levels[] = {
     "FINE",
@@ -22,12 +23,17 @@ void log(int16_t level, const char* string)
     if (level == LOG_WARNING) color = vga_makeColor(VGA_YELLOW, VGA_BLACK);
     if (level == LOG_ERROR)   color = vga_makeColor(VGA_LIGHT_RED, VGA_BLACK);
     if (level == LOG_FATAL)   color = vga_makeColor(VGA_RED, VGA_BLACK);
-    if (level >  LOG_FATAL)   color = vga_makeColor(VGA_LIGHT_BLUE, VGA_BLACK);
+    if (level >  LOG_FATAL)  {color = vga_makeColor(VGA_LIGHT_BLUE, VGA_BLACK); index = LOG_FATAL+3;}
 
     terminal_putchar_Color('[', vga_makeColor(VGA_WHITE, VGA_BLACK));
     terminal_puts_Color(levels[index], color);
     terminal_puts_Color("] ", vga_makeColor(VGA_WHITE, VGA_BLACK));
     terminal_puts(string);
+    
+    serial_writechar(COM1, '[');
+    serial_writes(COM1, levels[index]);
+    serial_writechar(COM1, ']');
+    serial_writes(COM1, string);
 }
 
 void logFErr(const char* string)

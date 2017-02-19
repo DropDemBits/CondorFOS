@@ -93,12 +93,6 @@ static char* predefMSGS[] = {
 };
 static uint32_t* descriptors;
 
-static char* getTable(int table)
-{
-    if(table & 4) return "LDT";
-    else return "GDT";
-}
-
 static void default_div0_isr(uint32_t* esp)
 {
     //Increment eip by two bytes to skip over div instruction
@@ -115,44 +109,23 @@ static void default_int3_isr(uint32_t* esp)
 
 void isr_handler(uint32_t* esp)
 {
-    uint32_t int_num =  *(esp+12) & 0xFFFF;
-    uint32_t err_code = *(esp+13) & 0xFFFF;
-
-    if(!isrs[int_num]) {
-        printf("ESP: %#lx, %#lx\n", esp, *esp);
+    uint32_t int_num =  *(esp+12) & 0xFF;
+    uint32_t err_code = *(esp+13);
+    printf("ESP: %lx\n", esp);
+    
+    if(!isrs[*(esp+12)]) {
         if(int_num > 31) int_num = 32;
-
-        //Registers
-        uint16_t cs =     *(esp+15) & 0xFFFF;
-        uint16_t ds =     *(esp+ 3) & 0xFFFF;
-        uint16_t es =     *(esp+ 2) & 0xFFFF;
-        uint16_t fs =     *(esp+ 1) & 0xFFFF;
-        uint16_t gs =     *(esp+ 0) & 0xFFFF;
-        uint32_t eflags = *(esp+16) & 0xFFFF;
-        uint32_t eip =    *(esp+14);
-        
+        //printf("ESP: %lx\n", esp);
         //Serial dump int num
-        uint32_t print_int = int_num;
+        uint32_t print_int = *(esp+12);
         serial_writechar(COM1, print_int % 10 + '0');
         print_int /= 10;
         serial_writechar(COM1, print_int % 10 + '0');
         
-        //Dump Registers:
-        printf("BEGIN DUMP:\n");
-        printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n",
-                *(esp+11),*(esp+ 8),*(esp+10),*(esp+ 9));
-        printf("ESP: %#lx, EBP: %#lx, ESI: %#lx, EDI: %#lx\n",
-                *(esp+ 7),*(esp+ 6),*(esp+ 5),*(esp+ 4));
-        printf("SEGMENT REGS: VALUE (INDEX|TABLE|RPL)\n");
-        printf("CS: %x (%d|%s|%d)\n", cs, cs >> 4, getTable(cs), cs & 0x2);
-        printf("DS: %x (%d|%s|%d)\n", ds, ds >> 4, getTable(ds), ds & 0x2);
-        printf("ES: %x (%d|%s|%d)\n", es, es >> 4, getTable(es), es & 0x2);
-        printf("FS: %x (%d|%s|%d)\n", fs, fs >> 4, getTable(fs), fs & 0x2);
-        printf("GS: %x (%d|%s|%d)\n", gs, gs >> 4, getTable(gs), gs & 0x2);
-        printf("EFLAGS: %#lx\n", eflags);
-        printf("EIP: %#lx\n", eip);
+        kdump_useStack((uqword_t*)esp);
         printf("ERR: %#x\n", err_code);
-        kpanic(predefMSGS[int_num]);
+        
+        kpanic(predefMSGS[*(esp+12)]);
     } else {
         void (*handler)(uint32_t*);
         if(isrs[int_num]) {
