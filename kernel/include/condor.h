@@ -1,20 +1,24 @@
 #include <stddef.h>
+#include <stdlib.h>
+#include <kernel/liballoc.h>
 
 #ifndef CONDOR_KERNEL_H
 #define CONDOR_KERNEL_H
 
 //Macros
 
-//Kernel version
-#define KENREL_TYPE_ALPHA 0
-#define KENREL_TYPE_BETA 1
-#define KENREL_TYPE_RC 2
-#define KENREL_TYPE_RELEASE 3
+#define KERNEL_ALPHA_STR  "-alpha"
+#define KERNEL_BETA_STR   "-beta"
+#define KERNEL_RC_STR     "-rc"
+#define KERNEL_RELEASE_STR "\0"
 
-#define KENREL_MAJOR 0
-#define KENREL_MINOR 1
-#define KENREL_PATCH 1
-#define KERNEL_TYPE  KENREL_TYPE_ALPHA
+#define KERNEL_VERSION_FORMATER "%ld.%ld.%ld%s"
+
+//Kernel version
+#define KERNEL_TYPE_ALPHA 0
+#define KERNEL_TYPE_BETA 1
+#define KERNEL_TYPE_RC 2
+#define KERNEL_TYPE_RELEASE 3
 
 //Typedefs
 
@@ -38,7 +42,8 @@ typedef   signed word_t;
 typedef   signed char byte_t;
 typedef   signed char char_t;
 
-extern uqword_t KERNEL_VIRTUAL_BASE;
+extern udword_t KERNEL_VIRTUAL_BASE;
+#define KERNEL_BASE (udword_t)&KERNEL_VIRTUAL_BASE
 
 /* Utilities */
 void kexit(int status);
@@ -47,6 +52,8 @@ void kputchar(const char c);
 void kdump_useStack(uqword_t* esp);
 void kdump_useRegs(uqword_t eip);
 void kdumpStack(uqword_t* esp, udword_t ebp);
+void itoa(qword_t number, char* str, int radix);
+udword_t* getKernelVersion();
 
 //Optimized memory functions
 /*

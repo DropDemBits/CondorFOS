@@ -17,22 +17,66 @@
  * condor.c: Implementation of condor.h
  */
 #include <condor.h>
+#include <serial.h>
+#include <io.h>
 #include <stdio.h>
 
 #include <kernel/tty.h>
 #include <kernel/klogger.h>
 
 extern udword_t stack_bottom;
+extern udword_t stack_top;
 
 extern udword_t readCR0();
 extern udword_t readCR2();
 extern udword_t readCR3();
 extern udword_t readCR4();
 
+static udword_t version[] = {0, 1, 1, KERNEL_TYPE_ALPHA};
+
 static char* getTable(int table)
 {
     if(table & 4) return "LDT";
     else return "GDT";
+}
+
+udword_t* getKernelVersion()
+{
+    return version;
+}
+
+void itoa(qword_t number, char* str, int radix)
+{
+    int begin = 0;
+    if(!number)
+    {
+        str[0] = '0';
+        str[1] = '\0';
+        return;
+    }
+
+    if(number < 0)
+    {
+        str[0] = '-';
+        begin++;
+        number = ~(number)+1;
+    }
+    
+    char nums[256] = {};
+    
+    int index = -1;
+
+    while(number)
+    {
+        index++;
+        nums[index] = "0123456789ABCDEF"[number % radix];
+        number /= radix;
+    }
+
+    for(; index >= 0; index--) {
+        str[begin++] = nums[index];
+    }
+    str[begin] = '\0';    
 }
 
 void kexit(int status)
@@ -45,10 +89,14 @@ void kexit(int status)
 
 void kpanic(const char* message)
 {
+    udword_t rsp = 0;
+    asm("movl %%esp, %0" : "=m"(rsp) :: "memory");
+    kdumpStack((uqword_t*)rsp, (udword_t)&stack_bottom);
+    
     logFErr(message);
     
     asm("cli");
-    for(;;) asm("hlt");
+    for(;;) asm("pause");
 }
 
 void kputchar(const char c)
@@ -68,13 +116,21 @@ void kdump_useStack(uqword_t* rsp)
     uint16_t gs =     *(esp+ 0) & 0xFFFF;
     uint32_t eflags = *(esp+16) & 0xFFFF;
     uint32_t eip =    *(esp+14);
+    uint32_t eax =    *(esp+11);
+    uint32_t ebx =    *(esp+8);
+    uint32_t ecx =    *(esp+10);
+    uint32_t edx =    *(esp+9);
+    uint32_t esp_now = 0;
+    uint32_t ebp =    *(esp+6);
+    uint32_t esi =    *(esp+5);
+    uint32_t edi =    *(esp+4);
+    
+    asm("movl %%esp, %0" : "=m"(esp_now) :: "memory");
     
     //Dump Registers:
     printf("BEGIN DUMP:\n");
-    printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n",
-            *(esp+11),*(esp+ 8),*(esp+10),*(esp+ 9));
-    printf("ESP: %#lx, EBP: %#lx, ESI: %#lx, EDI: %#lx\n",
-            *(esp+ 7),*(esp+ 6),*(esp+ 5),*(esp+ 4));
+    printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n", eax, ebx, ecx, edx);
+    printf("ESP: %#lx, EBP: %#lx, ESI: %#lx, EDI: %#lx\n", esp_now, ebp, esi, edi);
     printf("SEGMENT REGS: VALUE (INDEX|TABLE|RPL)\n");
     printf("CS: %x (%d|%s|%d)\n", cs, cs >> 4, getTable(cs), cs & 0x2);
     printf("DS: %x (%d|%s|%d)\n", ds, ds >> 4, getTable(ds), ds & 0x2);
@@ -84,6 +140,72 @@ void kdump_useStack(uqword_t* rsp)
     printf("EFLAGS: %#lx\n", eflags);
     printf("EIP: %#lx\n", eip);
     printf("CR0: %lx, CR2: %lx, CR3: %lx, CR4: %lx\n", readCR0(), readCR2(), readCR3(), readCR4());
+    //Dump Registers to serial
+    char buffer[65];
+    //GPRs
+    serial_writes(COM1, "\nBEGIN DUMP\nREGS: EAX: 0x");
+    itoa(eax, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " EBX: 0x");
+    itoa(ebx, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " ECX: 0x");
+    itoa(ecx, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " EDX: 0x");
+    itoa(edx, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, "\nESP: 0x");
+    itoa(esp_now, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " EBP: 0x");
+    itoa(ebp, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " ESI: 0x");
+    itoa(esi, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " EDI: 0x");
+    itoa(edi, buffer, 16);
+    serial_writes(COM1, buffer);
+    
+    //Segment registers
+    serial_writes(COM1, "SREGS:\nCS: ");
+    itoa(cs, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, "\nDS: ");
+    itoa(ds, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, "\nES: ");
+    itoa(es, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, "\nFS: ");
+    itoa(fs, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, "\nGS: ");
+    itoa(gs, buffer, 16);
+    serial_writes(COM1, buffer);
+    
+    serial_writes(COM1, "\nEFLAGS: 0x");
+    itoa(eflags, buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, "\nEIP: 0x");
+    itoa(eip, buffer, 16);
+    serial_writes(COM1, buffer);
+    
+    //Control Registers
+    serial_writes(COM1, "\nCR0: ");
+    itoa(readCR0(), buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " CR2: ");
+    itoa(readCR0(), buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " CR3: ");
+    itoa(readCR0(), buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, " CR4: ");
+    itoa(readCR0(), buffer, 16);
+    serial_writes(COM1, buffer);
+    serial_writes(COM1, "\r\n");
 }
 
 void kdump_useRegs(uqword_t rip)
@@ -118,12 +240,22 @@ void kdump_useRegs(uqword_t rip)
     printf("EFLAGS: %#lx\n", eflags);
     printf("EIP: %#lx\n", (udword_t)rip);
     printf("CR0: %lx, CR2: %lx, CR3: %lx, CR4: %lx\n", readCR0(), readCR2(), readCR3(), readCR4());
-    kdumpStack((uqword_t*)esp, stack_bottom);
+    kdumpStack((uqword_t*)esp, (udword_t)&stack_bottom);
 }
 
 void kdumpStack(uqword_t* rsp, udword_t ebp)
 {
+    char buffer[512];
     udword_t* esp = (udword_t*) rsp;
     for(udword_t* ind = esp; ((udword_t)ind) > ebp; ind -= 4)
-        printf("[STACK|0x%lx] [0x%lx]", ind, *ind);
+    {
+        printf("[STACK|%#lx] [%#lx]\n", ind, *ind);
+        serial_writes(COM1, "[STACK|");
+        itoa((udword_t)ind, buffer, 16);
+        serial_writes(COM1, buffer);
+        itoa(*ind, buffer, 16);
+        serial_writes(COM1, "] [");
+        serial_writes(COM1, buffer);
+        serial_writes(COM1, "]\n");
+    }
 }

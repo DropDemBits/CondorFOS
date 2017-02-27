@@ -12,7 +12,7 @@
 
 # Kernel Virtual Memory base
 .globl KERNEL_VIRTUAL_BASE
-.set KERNEL_VIRTUAL_BASE, 0x00000000
+.set KERNEL_VIRTUAL_BASE, 0xC0000000
 
 .section .bss
 # Initialize the stack
@@ -20,10 +20,7 @@ stack_bottom:
 .globl stack_bottom
 .skip 16384 # Reserve 16KiB
 stack_top:
-
-tss_start:
-.skip 0x68 # Size of tss
-tss_end:
+.globl stack_top
 
 .align 4096 # Align to page boundary
 
@@ -38,6 +35,15 @@ pt0_end:
 pt1_start:
 .skip 4096
 pt1_end:
+
+pt2_start:
+.skip 4096
+pt2_end:
+
+# TSS Must be aligned to page boundary
+tss_start:
+.skip 0x68 # Size of tss
+tss_end:
 
 .section .data
 # GDT sections
@@ -68,6 +74,12 @@ idtr:
 	.word idt_end - idt_data - 1
 	.long idt_data
 
+.align 4096
+# String store
+str_nosse:
+.long 0x70697072, 0x70727000
+.asciz "Error: CPU does not support SSE and SSE2"
+
 # Main code
 .section .text
 .extern idt_init
@@ -75,6 +87,27 @@ idtr:
 .type _start, @function
 _start:
 	cli
+        
+        # Preserve EAX and EBX
+	movl %ebx, 0x00000500
+	movl %eax, 0x00000504
+        
+        # Check for SSE & SSE2
+        movl $0x1, %eax
+        cpuid
+        
+        test $(1<<26), %edx
+        jz .boohoo
+        
+        # Go Ahead and setup SSE
+        movl %cr0, %eax
+        andl $(~4), %eax
+        orl $2, %eax
+        movl %eax, %cr0
+
+        movl %cr4, %eax
+        orl $0x600, %eax
+        movl %eax, %cr4
 
         # Initialize paging
         
@@ -106,14 +139,14 @@ _start:
 
 .Ldone:
         # Setup pages tables to be at index 0 and 768 (so that all kaddrs are above 0xC00000000)
-        movl $(pt0_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0
-        movl $(pt1_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 4
-        //movl $(pt_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 768
-        //movl $(pt_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 772
-        movl $(pd_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 1019
+        movl $(pt0_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0x000
+        movl $(pt1_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0x004
+        movl $(pt0_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 768*4
+        movl $(pt1_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 769*4
+        movl $(pd_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0xffc
         
         # Load CR3
-        movl $pd_start, %edi
+        movl $(pd_start - KERNEL_VIRTUAL_BASE), %edi
         movl %edi, %cr3
         
         # Enable all goodies (pse, pge)
@@ -125,12 +158,22 @@ _start:
         movl %cr0, %edx
         orl $0x80010000, %edx
         movl %edx, %cr0
+        
+        lea .LtoHigher, %eax
+        jmp *%eax
+        
+.LtoHigher:
+
+        # Disable identity paging
+        movl $0, pd_start + 0x000
+        movl $0, pd_start + 0x004
+
+        #Flush TLB
+        movl %cr3, %edx
+        movl %edx, %cr3
 
 	# Initialize stack
 	movl $stack_top, %esp
-	# Preserve EAX and EBX
-	movl %eax, %esi
-	movl %ebx, %edi
 
 	# Load GDT
 	lgdt (gdtr)
@@ -149,19 +192,35 @@ _start:
 	call idt_init
 
 	lidt (idtr)
-
+        
+        # Restore EAX and EBX
+        movl 0xC0000500, %ebx
+	movl 0xC0000504, %eax
+        
+        orl $KERNEL_VIRTUAL_BASE, %ebx
+        
 	# Before anything interactive, init kernel
 	# Also push multiboot stuff
-	push %esi # Multiboot magic thing
-	push %edi # Address to info structure
+	push %eax # Multiboot magic thing
+	push %ebx # Address to info structure
 	call kinit
 
 	# Go into the main kernel
 	call kmain
 
 	# Hang if there's nothing to do
-	cli
 .hang:
+        cli
 	hlt
 	jmp .hang
+.boohoo:
+        movl $0x0F720F45, (0xb8000)
+        movl $0x0F3A0F72, (0xb8004)
+        movl $0x0C4E0C20, (0xb8008)
+        movl $0x0C200C6F, (0xb800c)
+        movl $0x0C530C53, (0xb8010)
+        movl $0x0C280C45, (0xb8014)
+        movl $0x0C290C32, (0xb8018)
+        jmp .hang
+        
 .size _start, . - _start

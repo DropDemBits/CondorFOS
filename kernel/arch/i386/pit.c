@@ -74,7 +74,8 @@ uint32_t get_timer_seconds()
 
 void sleep(uint32_t ticks)
 {
+    //TODO: Make thread safe
     uint32_t start_ticks = _timer_ticks;
-    while((ticks+start_ticks) < _timer_ticks) asm("hlt");
+    while((ticks+start_ticks) >= _timer_ticks) asm("hlt");
     return;
 }

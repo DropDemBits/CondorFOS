@@ -1,6 +1,7 @@
 #include <kernel/idt.h>
 #include <kernel/klogger.h>
 #include <kernel/pic_hal.h>
+#include <kernel/pmm.h>
 #include <condor.h>
 #include <stdio.h>
 #include <serial.h>
@@ -111,7 +112,6 @@ void isr_handler(uint32_t* esp)
 {
     uint32_t int_num =  *(esp+12) & 0xFF;
     uint32_t err_code = *(esp+13);
-    printf("ESP: %lx\n", esp);
     
     if(!isrs[*(esp+12)]) {
         if(int_num > 31) int_num = 32;
@@ -122,11 +122,12 @@ void isr_handler(uint32_t* esp)
         print_int /= 10;
         serial_writechar(COM1, print_int % 10 + '0');
         
-        kdump_useStack((uqword_t*)esp);
+        if(pmm_isInited()) kdump_useStack((uqword_t*)esp);
         printf("ERR: %#x\n", err_code);
         
         kpanic(predefMSGS[*(esp+12)]);
-    } else {
+    } else
+    {
         void (*handler)(uint32_t*);
         if(isrs[int_num]) {
             handler = (void*) isrs[int_num];

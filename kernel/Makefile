@@ -16,7 +16,7 @@ ISO=condor.iso
 KERN=condor.kern
 
 CC=i686-elf-gcc
-CFLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Werror -Wextra -g $(addprefix -I,$(INCLUDE_DIRS))
+CFLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Werror -Wextra -g $(addprefix -I,$(INCLUDE_DIRS)) -g
 LDFLAGS=-ffreestanding -O2 -L$(SYSROOT)$(PREFIX)/lib $(addprefix -I,$(INCLUDE_DIRS)) $(ARCH_LDFLAGS)
 LIBS=-nostdlib -lgcc -lk
 
@@ -46,7 +46,7 @@ iso: $(KERN)
 	cp $(KERN) ../isodir/boot/$(KERN)
 	i686-grub-mkrescue -o ../$(ISO) ../isodir
 clean:
-	rm -f $(OBJS) $(ARCH_OBJ) ../$(ISO) $(KERN) ./*.i ./*.ii
+	rm -f $(OBJS) $(ARCH_OBJ) ../$(ISO) $(KERN) kern.sym ../condor.sym ./*.i ./*.ii
 
 install-headers:
 	mkdir -p $(SYSROOT)$(PREFIX)/include

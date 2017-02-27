@@ -25,35 +25,63 @@
 #include <string.h>
 #include <stdio.h>
 
-typedef struct {
-    physical_addr_t start_addr;
-    physical_addr_t end_addr;
-    uchar_t flags;
-} MemoryRegion;
-
 static physical_addr_t* stack_base;
-static uword_t stack_offset = 0;
+static physical_addr_t* stack_limit;
+static size_t stack_offset = 0;
 static MemoryRegion* regions_base;
 static uword_t region_indice = 0;
 static ubyte_t is_pmm_init = 0;
+static physical_addr_t stackpage_base = 0;
+static physical_addr_t stackpage_limit = 0;
 
 static void stack_pushAddr(physical_addr_t addr)
 {
-    if((addr == 0 && is_pmm_init) || addr == (physical_addr_t) stack_base) return;
+    if((addr == 0 && is_pmm_init) || addr == (physical_addr_t) stack_base) return;    
+    if(!pmm_isInited() && addr >= stackpage_base && addr <= stackpage_limit) return;
     
-    stack_base[stack_offset] = (physical_addr_t) addr;
-    stack_offset++;
+    if(stack_offset >= ADDR_PER_BLOCK)
+    {
+        if(!pmm_isInited())
+        {
+            stack_base = (physical_addr_t*) stack_base+0x1000;
+            stack_offset = 0;
+            stack_base[stack_offset++] = (physical_addr_t) stack_base-0x1000;
+            stack_base[stack_offset++] = addr;
+        } else {
+            physical_addr_t prev_stack = (physical_addr_t)stack_base;
+            stack_base = (physical_addr_t*) (addr + KERNEL_BASE);
+            *(stack_base) = prev_stack;
+            stack_offset = 0;
+        }
+    } else
+    {
+        stack_base[stack_offset] = (physical_addr_t) addr;
+        stack_offset++;
+    }
 }
 
-static physical_addr_t* stack_popAddr()
+static physical_addr_t* stack_popAddr(void)
 {
     physical_addr_t* ret_addr = 0;
     
-    stack_offset--;
-    ret_addr = (physical_addr_t*) stack_base[stack_offset];
+    if(stack_offset == 0)
+    {
+        ret_addr = (physical_addr_t*)((physical_addr_t)stack_base & 0x3FFFFFFF);
+        stack_base = (physical_addr_t*) *(stack_base);
+        stack_offset = ADDR_PER_BLOCK-1;
+        
+        if(*(stack_base) == 0)
+            //kpanic("Out of memory");
+            return (physical_addr_t*)0;
+    }
+    else
+    {
+        ret_addr = (physical_addr_t*) stack_base[--stack_offset];
+    }
     
     if(ret_addr == 0)
-        kpanic("Out of memory");
+        //kpanic("Out of memory");
+        return (physical_addr_t*)0;
     
     return ret_addr;
 }
@@ -65,21 +93,29 @@ void pmm_setRegionBase(physical_addr_t region_base)
 
 void pmm_init(size_t memory_size, physical_addr_t memory_base)
 {
+    stackpage_base = memory_base;
+    stackpage_limit = ((memory_base / ADDR_PER_BLOCK) << 12) + stackpage_base;
+    if(memory_base % ADDR_PER_BLOCK)
+        stackpage_limit += 0x1000;
+        
     stack_base = (physical_addr_t*)memory_base;
     
-    stack_pushAddr(0);
+    stack_limit = stack_base;
+    *stack_base = 0;
     
-    for(physical_addr_t addr = 0; addr <= memory_size; addr += 4096)
+    for(physical_addr_t addr = memory_size - BLOCK_SIZE; addr > 0; addr -= BLOCK_SIZE)
     {
         for(uword_t i = 0; i < region_indice; i++)
         {
             if(addr >= regions_base[i].start_addr && addr <= regions_base[i].end_addr && regions_base[i].flags & 3) {
-               addr = regions_base[i].end_addr;
+               addr = regions_base[i].start_addr;
+               if(addr <= 0) goto end;
             }
         }
         
         stack_pushAddr(addr);
     }
+    end:
     is_pmm_init = 1;
 }
 

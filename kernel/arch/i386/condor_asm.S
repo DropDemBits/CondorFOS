@@ -12,3 +12,7 @@ readCR 2
 readCR 3
 readCR 4
 readCR 8
+
+.globl switchPageBase
+switchPageBase:
+movl %eax, %cr3

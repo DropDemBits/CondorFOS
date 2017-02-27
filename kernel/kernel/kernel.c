@@ -12,17 +12,17 @@
 #include <condor.h>
 #include <serial.h>
 
-extern uint32_t kernel_start;
-uint32_t kernel_end;
+extern udword_t kernel_start;
+extern udword_t kernel_end;
 
 static char* mmap_types[6] = {"INV", "Available", "Reserved", "ACPI Reclaimable", "NVS", "BadRam"};
 
 void kinit(multiboot_info_t *info_struct, uint32_t magic)
 {
     serial_init(COM1, 0x0003);
-    serial_writes(COM1, "Successfully initialized serial port");
+    serial_writes(COM1, "Successfully initialized serial port COM1\n");
     terminal_init();
-    logNorm("Initialized tty\n");
+    logNorm("Initialized terminal\n");
 
     if(magic != MULTIBOOT_BOOTLOADER_MAGIC)
     {
@@ -33,77 +33,94 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     
     printf("Kernel (Start: %lx, End: %lx)\n", &kernel_start, &kernel_end);
     
-    if(info_struct->flags & (1 << 5)) {
-        kernel_end = info_struct->u.elf_sec.addr + info_struct->u.elf_sec.size;
-    }
-    
     int mem_pages = 1;
+    uqword_t mem_size = 0;
     if(info_struct->flags & (1 << 6))
     {
         printf("Memory Size: Low: %ldkb, %ldkb, Total: %ldkb\n", info_struct->mem_lower, info_struct->mem_upper, info_struct->mem_lower+(info_struct->mem_upper));
-         
-        pmm_setRegionBase(((udword_t)kernel_end & 0xFFFFF000) + 0x1000);
-        multiboot_memory_map_t* mmap = (multiboot_memory_map_t*) info_struct->mmap_addr;
         
-        while(((udword_t)mmap) < info_struct->mmap_addr + info_struct->mmap_length)
+        pmm_setRegionBase(((udword_t)&kernel_end & 0xFFFFF000) + 0x1000);
+        multiboot_memory_map_t* mmap = (multiboot_memory_map_t*) (info_struct->mmap_addr | KERNEL_BASE);
+        
+        while(((udword_t)mmap) < (info_struct->mmap_addr | KERNEL_BASE) + info_struct->mmap_length)
         {
             mem_pages++;
             
             //Process MMAP
             
-            if(mmap->type > MULTIBOOT_MEMORY_AVAILABLE) {
+            if(mmap->type > MULTIBOOT_MEMORY_AVAILABLE)
+            {
                 pmm_setRegion((udword_t)mmap->addr, (udword_t)mmap->len);
             }
+            else if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
+                mem_size = mmap->addr + mmap->len;
             printf("base_addr = 0x%lx, length = 0x%lx, %s\n", (udword_t)mmap->addr, (udword_t)mmap->len, mmap_types[mmap->type]);
             
             mmap = (multiboot_memory_map_t*) ((unsigned int)mmap + mmap->size + sizeof(mmap->size));
         }
     }
+    if(!mem_size) kpanic("Unable to get memory size");
     
     //Remove regions already occupied/mapped
     pmm_setRegion(0x0, 0x00800000);
     
     if(info_struct->flags & 0x1)
     {
-        //Initialize VMM for pf handling after PMM
-        logNorm("Initializing VMM\n");
         vmm_init();
-        
         logNorm("Initializing PMM\n");
-        pmm_init((info_struct->mem_lower+(info_struct->mem_upper)) << 10, ((udword_t)kernel_end & 0xFFFFF000) + (0x1000*mem_pages));
+        pmm_init(mem_size, (((udword_t)&kernel_end & 0xFFFFF000) + 0x2000 + (sizeof(MemoryRegion)*mem_pages)) & ~(0xFFF));
     }
     else kpanic("wut");
     
     
-    printf("Loaded by bootloader %s\n", info_struct->boot_loader_name);
-    if(info_struct->flags & 4)
+    if(info_struct->flags & 1 << 9)
     {
-        printf("Bootloader has loaded modules:\n");
+        logInfo("Loaded by Multiboot loader ");
+        printf("%s\n", info_struct->boot_loader_name + KERNEL_BASE);
+        serial_writes(COM1, (char*)info_struct->boot_loader_name + KERNEL_BASE);
+        serial_writechar(COM1, '\n');
+    }
+    if(info_struct->flags & 4 && info_struct->mods_count)
+    {
+        logInfo("Bootloader has loaded modules\n");
         printf("Number of modules: %d\n", info_struct->mods_count);
     }
 
     logNorm("Initializing keyboard\n");
     keyboard_init();
-    logNorm("Done Initializing keyboard\n");
-
-    logNorm("Initializing keyboard\n");
-    keyboard_init();
-    logNorm("Done Initializing keyboard\n");
 
     logNorm("Initializing Timer\n");
     timer_init();
-    logNorm("Done Initializing Timer\n");
     
     //Initialization done, Enable interrupts
     asm("sti");
 }
 
+extern physical_addr_t* stack_base;
+extern size_t stack_offset;
+
+static char* getKernelRelType(udword_t type)
+{
+    switch(type)
+    {
+    case KERNEL_TYPE_ALPHA:   return KERNEL_ALPHA_STR;
+    case KERNEL_TYPE_BETA:    return KERNEL_BETA_STR;
+    case KERNEL_TYPE_RC:      return KERNEL_RC_STR;
+    case KERNEL_TYPE_RELEASE: return KERNEL_RELEASE_STR;
+    default:                  return "\0";
+    }
+}
+
 void kmain()
 {
     serial_writes(COM1, "all\n");
-    logNorm("Successfully booted kernel\n");
+    logNorm("Successfully Initialized kernel\n");
     terminal_puts("\nWelcome to ");
-    terminal_puts_Color("CondorFOS!\n", vga_makeColor(VGA_WHITE, VGA_BLACK));
+    terminal_puts_Color("Condor!", vga_makeColor(VGA_WHITE, VGA_BLACK));
+    printf(" (");
+    udword_t* version = getKernelVersion();
+    printf(KERNEL_VERSION_FORMATER, version[0], version[1], version[2], getKernelRelType(version[3]));
+    printf(")\n");
     
     for(;;) asm("hlt");
 }

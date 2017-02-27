@@ -1,5 +1,5 @@
 #!/bin/bash
 set -e
-. ./iso.sh
+. ./make-syms.sh
 
 bochs -q -rc skip -f bochsrc

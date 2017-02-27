@@ -8,8 +8,9 @@
 #define LOG_ERROR   +2
 #define LOG_WARNING +1
 #define LOG_NORMAL  +0
-#define LOG_DEBUG   -1
-#define LOG_FINE    -2
+#define LOG_INFO    -1
+#define LOG_DEBUG   -2
+#define LOG_FINE    -3
 
 /**
  * Prints an event
@@ -37,10 +38,16 @@ void logErro(const char* string);
 void logWarn(const char* string);
 
 /**
- * Prints some information
+ * Prints Normal stuff
  * @param string The string to print
  */
 void logNorm(const char* string);
+
+/**
+ * Prints some information
+ * @param string The string to print
+ */
+void logInfo(const char* string);
 
 /**
  * Prints debug information

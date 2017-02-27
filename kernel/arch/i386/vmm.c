@@ -23,42 +23,121 @@
 #include <condor.h>
 
 extern udword_t readCR2();
-extern udword_t readCR3();
+extern void switchPageBase();
+extern udword_t stack_bottom;
 
-udword_t current_CR3 = 0x0;
+static linear_addr_t* PAGE_DIRECTORY  = (linear_addr_t*) 0xFFFFF000;
+static linear_addr_t* PAGE_TABLE_BASE = (linear_addr_t*) 0xFFC00000;
 
-static void map_page(linear_addr_t laddr, physical_addr_t paddr, uword_t flags)
+static void flush_tlb(linear_addr_t* addr)
 {
-    //TODO: Finalize page mapping
-    uword_t pd_index = laddr >> 22;
-    udword_t* pd = (udword_t*) (current_CR3 & 0xFFFFF000);
-    if(pd[pd_index] & 0xFFFFFFFE)
-        kpanic("PDE Nonexistant\n");
+    asm("invlpg (%0)" :: "r"((linear_addr_t)addr) : "memory");
+}
+
+static ubyte_t smap_page(linear_addr_t* laddr, physical_addr_t* paddr, uword_t flags)
+{
+    udword_t pd_index = (linear_addr_t)laddr >> (BLOCK_BITS+10);
+    udword_t pt_index = (linear_addr_t)laddr >> BLOCK_BITS;
     
-    uword_t pt_index = (laddr >> 12) & 0x3FF;
-    udword_t* pt = (udword_t*) pd[pd_index];
-    if(pt[pt_index] & 0x1)
-        kpanic("PTE Exists\n");
+    if(!(PAGE_DIRECTORY[pd_index] & PAGE_PRESENT))
+    {
+        PAGE_DIRECTORY[pd_index] = (physical_addr_t)pmalloc() | 0x00000003;
+        flush_tlb(laddr);
+    }
+    if(PAGE_TABLE_BASE[pt_index] & PAGE_PRESENT)
+        return 1;
     
-    pt[pt_index] = (paddr & 0xFFFFF000) | (flags & 0xFFF);
+    PAGE_TABLE_BASE[pt_index] = ((physical_addr_t)paddr & PAGE_ADDR_MASK) | (flags & PAGE_FLAG_MASK);
     
+    flush_tlb(laddr);
+    return 0;
+}
+
+static physical_addr_t* sumap_page(linear_addr_t* laddr)
+{
+    udword_t pd_index = (linear_addr_t)laddr >> (BLOCK_BITS+10);
+    udword_t pt_index = (linear_addr_t)laddr >> BLOCK_BITS;
+    
+    if(!(PAGE_DIRECTORY[pd_index] & PAGE_PRESENT))
+        return 0;
+    if(!(PAGE_TABLE_BASE[pt_index] & PAGE_PRESENT))
+        return 0;
+    
+    physical_addr_t* retAddr = (physical_addr_t*)(PAGE_TABLE_BASE[pt_index] & PAGE_ADDR_MASK);
+    PAGE_TABLE_BASE[pt_index] = 0;
+    flush_tlb(laddr);
+    
+    return retAddr;
 }
 
 static void pf_handler(udword_t* esp)
 {
-    printf("\nERR: %lx\n", *(esp+13));
-    if(*(esp+13) == 0x000) {
+    if(!(*(esp+13) & (PAGE_PRESENT | PAGE_USER))) {
         if(pmm_isInited())
-            map_page(readCR2(), (physical_addr_t)pmalloc(), 0x3);
+            smap_page((linear_addr_t*)readCR2(), pmalloc(), PAGE_PRESENT | PAGE_RW);
         else
-            map_page(readCR2(), (physical_addr_t)readCR2()-KERNEL_VIRTUAL_BASE, 0x3);
+        {
+            kdump_useStack((uqword_t*)esp);
+            kpanic("PF Before PMM was initialized");
+        }
     }
+}
+
+ubyte_t map_address(linear_addr_t* paddr, physical_addr_t* laddr, uqword_t flags)
+{
+    return smap_page(laddr, paddr, (udword_t)flags);
+}
+
+void unmap_address(linear_addr_t* laddr)
+{
+    pfree(sumap_page(laddr));
+    *(&laddr) = 0;
+}
+
+physical_addr_t* get_physical(linear_addr_t* laddr)
+{
+    udword_t pd_index = (linear_addr_t)laddr >> (BLOCK_BITS+10);
+    udword_t pt_index = (linear_addr_t)laddr >> BLOCK_BITS;
+    
+    if(!(PAGE_DIRECTORY[pd_index] & PAGE_PRESENT))
+        return 0;
+    if(!(PAGE_TABLE_BASE[pt_index] & PAGE_PRESENT))
+        return 0;
+    
+    return (physical_addr_t*) ((PAGE_TABLE_BASE[pt_index] & ~0xFFF) | ((linear_addr_t)laddr & 0xFFF));
 }
 
 void vmm_init()
 {
-    current_CR3 = readCR3();
-    if(!current_CR3) kpanic("CR3 is zero (paging not setup?)");
-    
     idt_addISR(14, (udword_t)pf_handler);
 }
+
+// TODO: Decide whether to section off this region into another file...
+/*static udword_t big_bitmap[32];
+static udword_t individual_bitmap[32768];
+
+static int vaddm_getFirstClearBit()
+{
+    int big_index;
+    int page_index;
+    for()
+    {
+        
+    }
+}
+
+linear_addr_t* allocAddrs(size_t length)
+{
+    
+}
+
+void freeAddrs(void* addr, size_t length)
+{
+    
+}
+
+void switchPageBase(udword_t pageAddr)
+{
+    asm("movl %%0, %eax\n\t" :: "m"(pageAddr));
+    switchPageBase();
+}*/

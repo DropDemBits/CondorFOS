@@ -29,9 +29,23 @@
 #define PMM_H
 
 /**
+ * Memory region structure
+ */
+typedef struct {
+    physical_addr_t start_addr;
+    physical_addr_t end_addr;
+    uchar_t flags;
+} MemoryRegion;
+
+/**
  * The size of an allocated block
  */
-#define BLOCK_SIZE 4096
+#define BLOCK_SIZE 0x1000
+
+/**
+ * Bit shift offset to the beginning of the actual address
+ */
+#define BLOCK_BITS 0xC
 
 #define ADDR_PER_BLOCK (BLOCK_SIZE / sizeof(physical_addr_t))-1
 

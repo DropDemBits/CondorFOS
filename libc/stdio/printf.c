@@ -41,10 +41,10 @@ int printf(const char *format, ...)
     size_t amount;
     bool rejected_formater = false;
     int length = 0;
-    bool pound = false;
+    uint8_t pound = 0;
     int written = 0;
 
-    while(*format != '\0')
+    while(*format)
     {
         if(*format != '%')
         {
@@ -74,7 +74,7 @@ int printf(const char *format, ...)
         //Format parsing
         if(*format == '#')
         {
-            pound = true;
+            pound = 1;
             format++;
         }
 

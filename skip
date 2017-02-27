@@ -1,1 +1,2 @@
+ldsym global "condor.sym"
 continue

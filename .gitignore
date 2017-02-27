@@ -25,3 +25,8 @@ com4.txt
 
 # Netbeans stuff
 nbproject/
+
+# DBG stuff
+*/core
+core
+*.sym

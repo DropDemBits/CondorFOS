@@ -5,6 +5,7 @@
 static char* levels[] = {
     "FINE",
     "DEBG",
+    "INFO",
     " OK ",
     "WARN",
     "ERRO",
@@ -14,11 +15,12 @@ static char* levels[] = {
 
 void log(int16_t level, const char* string)
 {
-    uint16_t index = level + 2;
+    uint16_t index = level + 3;
     uint16_t color = vga_makeColor(VGA_GREY, VGA_BLACK);
 
     if (level == LOG_FINE)    color = vga_makeColor(VGA_DARK_GREY, VGA_BLACK);
     if (level == LOG_DEBUG)   color = vga_makeColor(VGA_GREEN, VGA_BLACK);
+    if (level == LOG_INFO)  color = vga_makeColor(VGA_GREY, VGA_BLACK);
     if (level == LOG_NORMAL)  color = vga_makeColor(VGA_LIGHT_GREEN, VGA_BLACK);
     if (level == LOG_WARNING) color = vga_makeColor(VGA_YELLOW, VGA_BLACK);
     if (level == LOG_ERROR)   color = vga_makeColor(VGA_LIGHT_RED, VGA_BLACK);
@@ -34,6 +36,7 @@ void log(int16_t level, const char* string)
     serial_writes(COM1, levels[index]);
     serial_writechar(COM1, ']');
     serial_writes(COM1, string);
+    io_wait();
 }
 
 void logFErr(const char* string)
@@ -54,6 +57,10 @@ void logWarn(const char* string)
 void logNorm(const char* string)
 {
     log(LOG_NORMAL, string);
+}
+
+void logInfo(const char* string) {
+    log(LOG_INFO, string);
 }
 
 void logDebg(const char* string)
