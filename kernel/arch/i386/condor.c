@@ -32,7 +32,8 @@ extern udword_t readCR2();
 extern udword_t readCR3();
 extern udword_t readCR4();
 
-static udword_t version[] = {0, 1, 1, KERNEL_TYPE_ALPHA};
+//TODO: Make updating this more friendly
+static udword_t version[] = {0, 2, 0, KERNEL_TYPE_ALPHA};
 
 static char* getTable(int table)
 {
