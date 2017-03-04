@@ -1,2 +1,3 @@
 ldsym global "condor.sym"
+lb 0xc01006fa
 continue

@@ -90,9 +90,9 @@ void kexit(int status)
 
 void kpanic(const char* message)
 {
-    udword_t rsp = 0;
-    asm("movl %%esp, %0" : "=m"(rsp) :: "memory");
-    kdumpStack((uqword_t*)rsp, (udword_t)&stack_bottom);
+    //udword_t rsp = 0;
+    //asm("movl %%esp, %0" : "=m"(rsp) :: "memory");
+    //kdumpStack((uqword_t*)rsp, (udword_t)&stack_bottom);
     
     logFErr(message);
     
@@ -250,7 +250,8 @@ void kdumpStack(uqword_t* rsp, udword_t ebp)
     udword_t* esp = (udword_t*) rsp;
     for(udword_t* ind = esp; ((udword_t)ind) > ebp; ind -= 4)
     {
-        printf("[STACK|%#lx] [%#lx]\n", ind, *ind);
+        //Don't bother to dump stack to screen
+        //printf("[STACK|%#lx] [%#lx]\n", ind, *ind);
         serial_writes(COM1, "[STACK|");
         itoa((udword_t)ind, buffer, 16);
         serial_writes(COM1, buffer);

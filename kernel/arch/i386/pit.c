@@ -13,7 +13,7 @@ void timer_isr()
 
 void pit_init()
 {
-    pit_createCounter(1, PIT_COUNTER0, 0x36);
+    pit_createCounter(1, PIT_COUNTER0, 0x3E);
     idt_addISR(32, (uint32_t)timer_isr);
 }
 
@@ -47,19 +47,13 @@ void pit_sleep(uint32_t ticks)
 
 void timer_init()
 {
-    pit_createCounter(1, PIT_COUNTER0, 0x36);
+    pit_createCounter(1, PIT_COUNTER0, 0x20);
     idt_addISR(32, (uint32_t)timer_isr);
 }
 
 void timer_createCounter(uint32_t frequencey, uint8_t counter, uint8_t mode)
 {
-    if(!frequencey) return;
-    uint32_t divisor = 1193180;
-
-    outb(PIT_COMMAND, mode);
-
-    outb(counter, (divisor >> 0) & 0xFF);
-    outb(counter, (divisor >> 8) & 0xFF);
+    pit_createCounter(frequencey, counter, mode);
 }
 
 uint32_t get_timer_ticks()

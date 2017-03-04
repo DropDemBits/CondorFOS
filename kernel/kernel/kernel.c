@@ -72,7 +72,6 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     }
     else kpanic("wut");
     
-    
     if(info_struct->flags & 1 << 9)
     {
         logInfo("Loaded by Multiboot loader ");
@@ -91,6 +90,27 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
 
     logNorm("Initializing Timer\n");
     timer_init();
+    
+    //Do tests
+    
+    logNorm("Testing PMM\n");
+    physical_addr_t* paddr1 = pmalloc();
+    linear_addr_t* laddr = (linear_addr_t*)0xFFB00000;
+    map_address(laddr, paddr1, 0x3);
+    *laddr = 0xB00FBEEF;
+    unmap_address(laddr);
+    physical_addr_t* paddr2 = pmalloc();
+    map_address(laddr, paddr2, 0x3);
+    printf("PADDR1 %#lx, PADDR2 %#lx, AT ADDR: %#lx\n", paddr1, paddr2, *laddr);
+    if(paddr1 != paddr2 || *laddr != 0xB00FBEEF) kpanic("PMM Test failed");
+    unmap_address(laddr);
+    /*
+    physical_addr_t* paddr = pmalloc();
+    linear_addr_t* laddr = (linear_addr_t*)0xFFB00000;
+    map_address(laddr, paddr, 0x3);
+    physical_addr_t* paddr_get = get_physical(laddr);
+    if(paddr_get != paddr) kpanic("PMM Test failed");
+    unmap_address(laddr);*/
     
     //Initialization done, Enable interrupts
     asm("sti");
@@ -122,5 +142,11 @@ void kmain()
     printf(KERNEL_VERSION_FORMATER, version[0], version[1], version[2], getKernelRelType(version[3]));
     printf(")\n");
     
-    for(;;) asm("hlt");
+    while(1)
+    {
+        terminal_moveCursor(0, 24);
+        printf("%ld", get_timer_seconds());
+        asm("nop");
+        //asm("int $32");
+    }
 }

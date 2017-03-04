@@ -31,7 +31,7 @@ static linear_addr_t* PAGE_TABLE_BASE = (linear_addr_t*) 0xFFC00000;
 
 static void flush_tlb(linear_addr_t* addr)
 {
-    asm("invlpg (%0)" :: "r"((linear_addr_t)addr) : "memory");
+    asm("invlpg (%0)" :: "r"(addr));
 }
 
 static ubyte_t smap_page(linear_addr_t* laddr, physical_addr_t* paddr, uword_t flags)
@@ -78,12 +78,13 @@ static void pf_handler(udword_t* esp)
         else
         {
             kdump_useStack((uqword_t*)esp);
+            printf("ERR: %#lx\n", *(esp+13));
             kpanic("PF Before PMM was initialized");
         }
     }
 }
 
-ubyte_t map_address(linear_addr_t* paddr, physical_addr_t* laddr, uqword_t flags)
+ubyte_t map_address(linear_addr_t* laddr, physical_addr_t* paddr, uqword_t flags)
 {
     return smap_page(laddr, paddr, (udword_t)flags);
 }

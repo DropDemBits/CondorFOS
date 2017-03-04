@@ -21,13 +21,14 @@
  */
 
 #include <kernel/pmm.h>
+#include <kernel/vmm.h>
 #include <condor.h>
 #include <string.h>
 #include <stdio.h>
 
 static physical_addr_t* stack_base;
 static physical_addr_t* stack_limit;
-static size_t stack_offset = 0;
+static size_t stack_offset = 1;
 static MemoryRegion* regions_base;
 static uword_t region_indice = 0;
 static ubyte_t is_pmm_init = 0;
@@ -38,14 +39,13 @@ static void stack_pushAddr(physical_addr_t addr)
 {
     if((addr == 0 && is_pmm_init) || addr == (physical_addr_t) stack_base) return;    
     if(!pmm_isInited() && addr >= stackpage_base && addr <= stackpage_limit) return;
-    
     if(stack_offset >= ADDR_PER_BLOCK)
     {
         if(!pmm_isInited())
         {
-            stack_base = (physical_addr_t*) stack_base+0x1000;
+            stack_base = (physical_addr_t*) stack_base+0x400;
             stack_offset = 0;
-            stack_base[stack_offset++] = (physical_addr_t) stack_base-0x1000;
+            stack_base[stack_offset++] = (physical_addr_t) stack_base-0x400;
             stack_base[stack_offset++] = addr;
         } else {
             physical_addr_t prev_stack = (physical_addr_t)stack_base;
@@ -66,7 +66,7 @@ static physical_addr_t* stack_popAddr(void)
     
     if(stack_offset == 0)
     {
-        ret_addr = (physical_addr_t*)((physical_addr_t)stack_base & 0x3FFFFFFF);
+        ret_addr = (physical_addr_t*)((physical_addr_t)stack_base & ~KERNEL_BASE);
         stack_base = (physical_addr_t*) *(stack_base);
         stack_offset = ADDR_PER_BLOCK-1;
         
@@ -94,8 +94,8 @@ void pmm_setRegionBase(physical_addr_t region_base)
 void pmm_init(size_t memory_size, physical_addr_t memory_base)
 {
     stackpage_base = memory_base;
-    stackpage_limit = ((memory_base / ADDR_PER_BLOCK) << 12) + stackpage_base;
-    if(memory_base % ADDR_PER_BLOCK)
+    stackpage_limit = ((memory_base / (ADDR_PER_BLOCK-1)) << 12) + stackpage_base;
+    if(memory_base % ADDR_PER_BLOCK-1)
         stackpage_limit += 0x1000;
         
     stack_base = (physical_addr_t*)memory_base;
