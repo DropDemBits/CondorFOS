@@ -61,4 +61,8 @@ void terminal_scroll(void);
  */
 void terminal_setColor(uint8_t fg, uint8_t bg);
 
+void terminal_storePosition();
+
+void terminal_restorePosition();
+
 #endif

@@ -3,12 +3,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <kernel/dev_control.h>
 #include <kernel/keyboard.h>
 #include <kernel/klogger.h>
 #include <kernel/pmm.h>
 #include <kernel/timer_hal.h>
 #include <kernel/tty.h>
 #include <kernel/vmm.h>
+#include <kernel/pic_hal.h>
 #include <condor.h>
 #include <serial.h>
 
@@ -78,18 +80,22 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         printf("%s\n", info_struct->boot_loader_name + KERNEL_BASE);
         serial_writes(COM1, (char*)info_struct->boot_loader_name + KERNEL_BASE);
         serial_writechar(COM1, '\n');
+        serial_writechar(COM1, '\r');
     }
     if(info_struct->flags & 4 && info_struct->mods_count)
     {
         logInfo("Bootloader has loaded modules\n");
         printf("Number of modules: %d\n", info_struct->mods_count);
     }
-
-    logNorm("Initializing keyboard\n");
-    keyboard_init();
-
+    
     logNorm("Initializing Timer\n");
     timer_init();
+    
+    logNorm("Initializing PS/2 Controller\n");
+    controller_init();
+    
+    logNorm("Initializing keyboard\n");
+    keyboard_init();
     
     //Do tests
     
@@ -104,13 +110,6 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     printf("PADDR1 %#lx, PADDR2 %#lx, AT ADDR: %#lx\n", paddr1, paddr2, *laddr);
     if(paddr1 != paddr2 || *laddr != 0xB00FBEEF) kpanic("PMM Test failed");
     unmap_address(laddr);
-    /*
-    physical_addr_t* paddr = pmalloc();
-    linear_addr_t* laddr = (linear_addr_t*)0xFFB00000;
-    map_address(laddr, paddr, 0x3);
-    physical_addr_t* paddr_get = get_physical(laddr);
-    if(paddr_get != paddr) kpanic("PMM Test failed");
-    unmap_address(laddr);*/
     
     //Initialization done, Enable interrupts
     asm("sti");
@@ -144,9 +143,16 @@ void kmain()
     
     while(1)
     {
+        /*
+        terminal_storePosition();
         terminal_moveCursor(0, 24);
-        printf("%ld", get_timer_seconds());
-        asm("nop");
-        //asm("int $32");
+        printf("%ld", timer_getMillis() / 1000);
+        terminal_restorePosition();
+        terminal_moveCursor(0, 23);
+        printf("%ld", timer_getMillis());
+        terminal_restorePosition();
+        terminal_restorePosition();
+        */
+        asm("hlt");
     }
 }

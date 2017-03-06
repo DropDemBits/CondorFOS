@@ -15,6 +15,23 @@
 #define ISR_ATR_RING2    0b01000000
 #define ISR_ATR_RING3    0b01100000
 
+#define IRQ0  32
+#define IRQ1  IRQ0+1
+#define IRQ2  IRQ0+2
+#define IRQ3  IRQ0+3
+#define IRQ4  IRQ0+4
+#define IRQ5  IRQ0+5
+#define IRQ6  IRQ0+6
+#define IRQ7  IRQ0+7
+#define IRQ8  IRQ0+8
+#define IRQ9  IRQ0+9
+#define IRQ10 IRQ0+10
+#define IRQ11 IRQ0+11
+#define IRQ12 IRQ0+12
+#define IRQ13 IRQ0+13
+#define IRQ14 IRQ0+14
+#define IRQ15 IRQ0+15
+
 // ISR Stack State
 typedef struct
 {

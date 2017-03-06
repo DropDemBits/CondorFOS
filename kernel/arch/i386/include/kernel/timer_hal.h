@@ -5,8 +5,8 @@
 
 void timer_init();
 void timer_createCounter(uint32_t frequencey, uint8_t counter, uint8_t mode);
-uint32_t get_timer_ticks();
-uint32_t get_timer_seconds();
+uint32_t timer_getTicks();
+uint32_t timer_getMillis();
 void sleep(uint32_t ticks);
 
 #endif

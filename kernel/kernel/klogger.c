@@ -34,7 +34,7 @@ void log(int16_t level, const char* string)
     
     serial_writechar(COM1, '[');
     serial_writes(COM1, levels[index]);
-    serial_writechar(COM1, ']');
+    serial_writes(COM1, "] ");
     serial_writes(COM1, string);
     io_wait();
 }

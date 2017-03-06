@@ -1,28 +1,31 @@
 #include <kernel/idt.h>
 #include <kernel/pit.h>
 #include <io.h>
+#include <stdio.h>
 
-static uint32_t _timer_ticks;
-static uint32_t _timer_secs;
+static volatile uint32_t _timer_ticks;
+static volatile uint32_t _timer_millis;
 
 void timer_isr()
 {
     _timer_ticks++;
-    if(_timer_ticks % 72 == 0) _timer_secs++;
+    if(_timer_ticks % MILLI_INTERVAL) _timer_millis++;
 }
 
 void pit_init()
 {
-    pit_createCounter(1, PIT_COUNTER0, 0x3E);
+    pit_createCounter(MAIN_FRQ, PIT_COUNTER0, 0x34);
+    pit_createCounter(0x1, PIT_COUNTER2, 0x36);
+    outb(0x61, 0x3);
     idt_addISR(32, (uint32_t)timer_isr);
 }
 
 void pit_createCounter(uint32_t frequencey, uint8_t counter, uint8_t mode)
 {
     if(!frequencey) return;
-    uint32_t divisor = 1193180;
+    uint32_t divisor = 1193182 / frequencey;
 
-    outb(PIT_COMMAND, mode);
+    outb(PIT_COMMAND, mode | counter << 6);
 
     outb(counter, (divisor >> 0) & 0xFF);
     outb(counter, (divisor >> 8) & 0xFF);
@@ -47,8 +50,7 @@ void pit_sleep(uint32_t ticks)
 
 void timer_init()
 {
-    pit_createCounter(1, PIT_COUNTER0, 0x20);
-    idt_addISR(32, (uint32_t)timer_isr);
+    pit_init();
 }
 
 void timer_createCounter(uint32_t frequencey, uint8_t counter, uint8_t mode)
@@ -56,20 +58,22 @@ void timer_createCounter(uint32_t frequencey, uint8_t counter, uint8_t mode)
     pit_createCounter(frequencey, counter, mode);
 }
 
-uint32_t get_timer_ticks()
+uint32_t timer_getTicks()
 {
     return _timer_ticks;
 }
 
-uint32_t get_timer_seconds()
+uint32_t timer_getMillis()
 {
-    return _timer_secs;
+    return _timer_millis;
 }
 
 void sleep(uint32_t ticks)
 {
     //TODO: Make thread safe
-    uint32_t start_ticks = _timer_ticks;
-    while((ticks+start_ticks) >= _timer_ticks) asm("hlt");
+    asm("pushf\n\tsti");
+    volatile uint32_t end_ticks = _timer_ticks+ticks;
+    while(_timer_ticks <= end_ticks) asm("pause");
+    asm("popf");
     return;
 }

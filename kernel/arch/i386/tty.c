@@ -6,6 +6,8 @@
 
 static uint8_t terminal_column;
 static uint8_t terminal_row;
+static uint8_t terminal_column_store;
+static uint8_t terminal_row_store;
 static uint16_t default_color;
 static uint16_t* vga_buffer;
 
@@ -170,4 +172,16 @@ void terminal_scroll(void)
 void terminal_setColor(uint8_t fg, uint8_t bg)
 {
     default_color = vga_makeColor(fg, bg);
+}
+
+void terminal_storePosition()
+{
+    terminal_column_store = terminal_column;
+    terminal_row_store = terminal_row;
+}
+
+void terminal_restorePosition()
+{
+    terminal_column = terminal_column_store;
+    terminal_row = terminal_row_store;
 }

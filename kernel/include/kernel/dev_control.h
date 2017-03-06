@@ -27,10 +27,17 @@
 #ifndef DEV_CONTROL_H
 #define DEV_CONTROL_H
 
-#define DEV0 0
-#define DEV1 1
-#define DEV2 2
-#define DEV3 3
+#define DEV1 0
+#define DEV2 1
+#define DEV_INV 2
+
+#define DEV_TYPE_ATKBD_TRANS  0
+#define DEV_TYPE_PS2_MOUSE    1
+#define DEV_TYPE_MOUSE_SCR    2
+#define DEV_TYPE_MOUSE_5B     3
+#define DEV_TYPE_MF2KBD       4
+#define DEV_TYPE_MF2KBD_TRANS 5
+#define DEV_TYPE_UNKNOWN      255
 
 #define PS2_DATA    0x60
 #define PS2_STT_CMD 0x64
@@ -43,7 +50,13 @@ void controller_handleDevice(int device, uqword_t func);
 
 int controller_sendDataTo(int device, ubyte_t data);
 
-ubyte_t controller_readDataFrom(int device, ubyte_t data);
+ubyte_t controller_readDataFrom(int device);
+
+ubyte_t controller_getType(int device);
+
+int controller_getKeyboardDev();
+
+int controller_getMouseDev();
 
 #endif /* DEV_CONTROL */
 

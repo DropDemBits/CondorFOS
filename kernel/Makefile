@@ -11,7 +11,7 @@ include ./arch/$(TARGET_ARCH)/make.config
 SYSROOT?=$(shell ../get-sysroot.sh)
 PREFIX?=/usr/local
 
-INCLUDE_DIRS=../grub/include $(SYSROOT)$(PREFIX)/include $(ARCH_INCLUDE_DIRS)
+INCLUDE_DIRS=$(SYSROOT)$(PREFIX)/include $(ARCH_INCLUDE_DIRS)
 ISO=condor.iso
 KERN=condor.kern
 

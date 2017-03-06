@@ -6,6 +6,9 @@
 #   endif
 #define PIT_H
 
+#define MAIN_FRQ 1193
+#define MILLI_INTERVAL ((MAIN_FRQ/1193)*1000)
+
 #define PIT_COUNTER0 0x40
 #define PIT_COUNTER1 0x41
 #define PIT_COUNTER2 0x42
