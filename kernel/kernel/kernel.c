@@ -92,8 +92,8 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     timer_init();
     
     logNorm("Initializing PS/2 Controller\n");
-    controller_init();
-    
+    controller_init();    
+
     logNorm("Initializing keyboard\n");
     keyboard_init();
     
@@ -141,18 +141,15 @@ void kmain()
     printf(KERNEL_VERSION_FORMATER, version[0], version[1], version[2], getKernelRelType(version[3]));
     printf(")\n");
     
+    ubyte_t last_char = 0;
+    
     while(1)
     {
-        /*
-        terminal_storePosition();
-        terminal_moveCursor(0, 24);
-        printf("%ld", timer_getMillis() / 1000);
-        terminal_restorePosition();
-        terminal_moveCursor(0, 23);
-        printf("%ld", timer_getMillis());
-        terminal_restorePosition();
-        terminal_restorePosition();
-        */
+	ubyte_t new_char = keyboard_readKey();
+        if(new_char != KEY_NONE && new_char != last_char)
+        {
+            printf("%d ", new_char);
+        }
         asm("hlt");
     }
 }

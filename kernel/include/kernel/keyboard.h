@@ -92,7 +92,7 @@
 #define KEY_KP_STAR    84
 #define KEY_KP_MINUS   85
 #define KEY_KP_PLUS    86
-#define KEY_KP_EN      87
+#define KEY_KP_ENTER   87
 #define KEY_KP_DOT     88
 #define KEY_KP_0       89
 #define KEY_KP_1       90
@@ -151,5 +151,7 @@ void keyboard_init(void);
  * @return The char from the current char mapping
  */
 char keyboard_getChar(uint8_t keycode);
+
+ubyte_t keyboard_readKey();
 
 #endif
