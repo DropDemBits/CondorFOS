@@ -32,24 +32,24 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         printf("EBX is %lx\n", info_struct);
         kpanic("Not loaded by a multiboot bootloader");
     }
-    
+
     printf("Kernel (Start: %lx, End: %lx)\n", &kernel_start, &kernel_end);
-    
+
     int mem_pages = 1;
     uqword_t mem_size = 0;
     if(info_struct->flags & (1 << 6))
     {
         printf("Memory Size: Low: %ldkb, %ldkb, Total: %ldkb\n", info_struct->mem_lower, info_struct->mem_upper, info_struct->mem_lower+(info_struct->mem_upper));
-        
+
         pmm_setRegionBase(((udword_t)&kernel_end & 0xFFFFF000) + 0x1000);
         multiboot_memory_map_t* mmap = (multiboot_memory_map_t*) (info_struct->mmap_addr | KERNEL_BASE);
-        
+
         while(((udword_t)mmap) < (info_struct->mmap_addr | KERNEL_BASE) + info_struct->mmap_length)
         {
             mem_pages++;
-            
+
             //Process MMAP
-            
+
             if(mmap->type > MULTIBOOT_MEMORY_AVAILABLE)
             {
                 pmm_setRegion((udword_t)mmap->addr, (udword_t)mmap->len);
@@ -57,15 +57,15 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
             else if(mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
                 mem_size = mmap->addr + mmap->len;
             printf("base_addr = 0x%lx, length = 0x%lx, %s\n", (udword_t)mmap->addr, (udword_t)mmap->len, mmap_types[mmap->type]);
-            
+
             mmap = (multiboot_memory_map_t*) ((unsigned int)mmap + mmap->size + sizeof(mmap->size));
         }
     }
     if(!mem_size) kpanic("Unable to get memory size");
-    
+
     //Remove regions already occupied/mapped
     pmm_setRegion(0x0, 0x00800000);
-    
+
     if(info_struct->flags & 0x1)
     {
         vmm_init();
@@ -73,7 +73,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         pmm_init(mem_size, (((udword_t)&kernel_end & 0xFFFFF000) + 0x2000 + (sizeof(MemoryRegion)*mem_pages)) & ~(0xFFF));
     }
     else kpanic("wut");
-    
+
     if(info_struct->flags & 1 << 9)
     {
         logInfo("Loaded by Multiboot loader ");
@@ -87,18 +87,18 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         logInfo("Bootloader has loaded modules\n");
         printf("Number of modules: %d\n", info_struct->mods_count);
     }
-    
+
     logNorm("Initializing Timer\n");
     timer_init();
-    
+
     logNorm("Initializing PS/2 Controller\n");
-    controller_init();    
+    controller_init();
 
     logNorm("Initializing keyboard\n");
     keyboard_init();
-    
+
     //Do tests
-    
+
     logNorm("Testing PMM\n");
     physical_addr_t* paddr1 = pmalloc();
     linear_addr_t* laddr = (linear_addr_t*)0xFFB00000;
@@ -110,7 +110,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     printf("PADDR1 %#lx, PADDR2 %#lx, AT ADDR: %#lx\n", paddr1, paddr2, *laddr);
     if(paddr1 != paddr2 || *laddr != 0xB00FBEEF) kpanic("PMM Test failed");
     unmap_address(laddr);
-    
+
     //Initialization done, Enable interrupts
     asm("sti");
 }
@@ -140,16 +140,19 @@ void kmain()
     udword_t* version = getKernelVersion();
     printf(KERNEL_VERSION_FORMATER, version[0], version[1], version[2], getKernelRelType(version[3]));
     printf(")\n");
-    
-    ubyte_t last_char = 0;
-    
+
+    ubyte_t last_state = 0;
+
     while(1)
     {
-	ubyte_t new_char = keyboard_readKey();
-        if(new_char != KEY_NONE && new_char != last_char)
+	    ubyte_t new_char = keyboard_readKey();
+
+        if(new_char && keyboard_getKeyState(new_char) != last_state)
         {
-            printf("%d ", new_char);
-        }
+            if(keyboard_getChar(new_char)) printf("%c", keyboard_getChar(new_char));
+            last_state = keyboard_getKeyState(new_char);
+        } else last_state = 0;
+        putchar('a');
         asm("hlt");
     }
 }

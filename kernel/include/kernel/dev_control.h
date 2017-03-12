@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* 
+/*
  * File:   dev_control.h
  * Author: DropDemBits <r3usrlnd@gmail.com>
  *
@@ -29,7 +29,7 @@
 
 #define DEV1 0
 #define DEV2 1
-#define DEV_INV 2
+#define DEV_INV 255
 
 #define DEV_TYPE_ATKBD_TRANS  0
 #define DEV_TYPE_PS2_MOUSE    1
@@ -43,6 +43,8 @@
 #define PS2_STT_CMD 0x64
 #define PS2_ACK     0xFA
 #define PS2_RESEND  0xFE
+
+//TODO: Abstract using HAL
 
 void controller_init(void);
 
@@ -58,5 +60,6 @@ int controller_getKeyboardDev();
 
 int controller_getMouseDev();
 
-#endif /* DEV_CONTROL */
+ubyte_t controller_useKeyboardFallback();
 
+#endif /* DEV_CONTROL */

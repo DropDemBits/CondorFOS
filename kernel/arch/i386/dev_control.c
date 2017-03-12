@@ -22,11 +22,13 @@
 #include <kernel/timer_hal.h>
 #include <kernel/klogger.h>
 
+ubyte_t fallback = 0;
 int devType[] = {DEV_TYPE_UNKNOWN, DEV_TYPE_UNKNOWN};
 int hasDEV2 = 0;
 
 void controller_init(void)
 {
+    //TODO: Make this less bulky
     outb(PS2_STT_CMD, 0xAD);
     outb(PS2_STT_CMD, 0xA7);
     while(inb(PS2_DATA) && (inb(PS2_STT_CMD) & 0x1)) asm("pause");
@@ -36,7 +38,7 @@ void controller_init(void)
     cont_conf = cont_conf & 0x23;
     outb(PS2_STT_CMD, 0x60);
     outb(PS2_DATA, cont_conf);
-    again:    
+    again:
     outb(PS2_STT_CMD, 0xAA);
     while((inb(PS2_STT_CMD) & 0x1) == 0) asm("pause");
     ubyte_t resp = inb(PS2_DATA);
@@ -58,7 +60,7 @@ void controller_init(void)
     outb(PS2_STT_CMD, 0xAB);
     if(!inb(PS2_STT_CMD)) channels |= 0;
     else channels |= 0x1;
-    if(channels & 0x8) 
+    if(channels & 0x8)
     {
         outb(PS2_STT_CMD, 0xA9);
         if(!inb(PS2_STT_CMD)) channels &= ~0x8;
@@ -69,11 +71,11 @@ void controller_init(void)
         }
     }
     if(!channels) kpanic("Something is wrong with the PS/2 Ports...");
-    
+
     cont_conf = inb(PS2_DATA);
-    
+
     ubyte_t b0 = 0, b1 = 0, b2 = 0;
-    
+
     if(channels & 0x1)
     {
         outb(PS2_STT_CMD, 0xAE);
@@ -85,12 +87,13 @@ void controller_init(void)
             channels &= ~0x1;
             goto skip;
         }
+        if(first_byte != 0xAA) fallback |= 1;
         outb(PS2_DATA, 0xF5);
         while((inb(PS2_STT_CMD) & 0x1) == 0) asm("pause");
         ubyte_t in = inb(PS2_DATA);
         if(in != 0xFA && in != 0xAA) goto skip;
         cont_conf |= 0x1;
-        
+
         //ID device
         outb(PS2_STT_CMD, 0xAD);
         while(inb(PS2_DATA) != 0xFA);
@@ -103,7 +106,7 @@ void controller_init(void)
             printf("%#x\n", bACK);
             kpanic("NON_ACK");
         }
-        
+
         uword_t watch_dog = 0;
         while((inb(PS2_STT_CMD) & 0x1) == 0)
         {
@@ -117,7 +120,7 @@ void controller_init(void)
         if(watch_dog != 0xFFFF) b0 = inb(PS2_DATA);
         else b0 = 0xBA;
         watch_dog = 0;
-        
+
         while((inb(PS2_STT_CMD) & 0x1) == 0)
         {
             if(watch_dog >= 2000)
@@ -129,7 +132,7 @@ void controller_init(void)
         }
         if(watch_dog != 0xFFFF) b1 = inb(PS2_DATA);
         else b1 = 0xBA;
-        
+
         if(b0 == 0xBA && b1 == 0xBA) devType[0] = DEV_TYPE_ATKBD_TRANS;
         else if(b0 == 0xBA && b1 == 0xBA) devType[0] = DEV_TYPE_PS2_MOUSE;
         else if(b0 == 0xBA && b1 == 0xBA) devType[0] = DEV_TYPE_MOUSE_SCR;
@@ -137,10 +140,11 @@ void controller_init(void)
         else if(b0 == 0xAB && (b1 == 0x41 || b1 == 0xC1)) devType[0] = DEV_TYPE_MF2KBD_TRANS;
         else if(b0 == 0xAB && b1 == 0x83) devType[0] = DEV_TYPE_MF2KBD;
         else devType[0] = DEV_TYPE_UNKNOWN;
-        
+
+        if(controller_getKeyboardDev() != DEV1 && fallback) fallback = 0;
         while(inb(PS2_DATA) && (inb(PS2_STT_CMD) & 0x1)) asm("pause");
     }
-    
+
     skip:
     if(channels & 0x8 && hasDEV2)
     {
@@ -159,7 +163,7 @@ void controller_init(void)
         while((inb(PS2_STT_CMD) & 0x1) == 0) asm("pause");
         ubyte_t in = inb(PS2_DATA);
         if(in != 0xFA) goto skip;
-        
+
         //ID device
         outb(PS2_STT_CMD, 0xD3);
         outb(PS2_DATA, 0xBA);
@@ -167,9 +171,9 @@ void controller_init(void)
         outb(PS2_DATA, 0xBA);
         outb(PS2_STT_CMD, 0xD3);
         outb(PS2_DATA, 0xBA);
-        
+
         outb(PS2_DATA, 0xF2);
-        
+
         sleep(MILLI_INTERVAL*500);
         b0 = inb(PS2_DATA);
         b1 = inb(PS2_DATA);
@@ -191,7 +195,7 @@ void controller_init(void)
         }
         cont_conf |= 0x2;
     }
-    
+
     end:
     outb(PS2_STT_CMD, 0x60);
     outb(PS2_DATA, cont_conf);
@@ -218,7 +222,7 @@ int controller_sendDataTo(int device, ubyte_t data)
         if(watch_dog > 1000) break;
     }
     if(watch_dog > 1000) return 1;
-    
+
     if(device == DEV2) outb(PS2_STT_CMD, 0xD4);
     outb(PS2_DATA, data);
     while(inb(PS2_DATA) != 0xFA) asm("pause");
@@ -251,4 +255,9 @@ int controller_getMouseDev()
         return DEV2;
     else if(devType[0] != DEV_TYPE_UNKNOWN) return DEV1;
     return DEV_INV;
+}
+
+ubyte_t controller_useKeyboardFallback()
+{
+    return fallback;
 }

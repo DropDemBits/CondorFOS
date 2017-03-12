@@ -46,70 +46,71 @@
 #define KEY_DASH       38
 #define KEY_EQUALS     39
 #define KEY_BACKSLASH  40
-#define KEY_BACKSPACE  41
-#define KEY_SPACE      42
-#define KEY_TAB        43
-#define KEY_CAPS       44
-#define KEY_LSHIFT     45
-#define KEY_LCTRL      46
-#define KEY_LGUI       47
-#define KEY_LALT       48
-#define KEY_RSHIFT     49
-#define KEY_RCTRL      50
-#define KEY_RGUI       51
-#define KEY_RALT       52
-#define KEY_APPS       53
-#define KEY_ENTER      54
-#define KEY_ESCAPE     55
-#define KEY_F1         56
-#define KEY_F2         57
-#define KEY_F3         58
-#define KEY_F4         59
-#define KEY_F5         60
-#define KEY_F6         61
-#define KEY_F7         62
-#define KEY_F8         63
-#define KEY_F9         64
-#define KEY_F10        65
-#define KEY_F11        66
-#define KEY_F12        67
-#define KEY_PRINT_SCR  68
-#define KEY_SCROLL     69
-#define KEY_PAUSE      70
-#define KEY_LBRACE     71
-#define KEY_INSERT     72
-#define KEY_HOME       73
-#define KEY_PG_UP      74
-#define KEY_DELETE     75
-#define KEY_END        76
-#define KEY_PG_DOWN    77
-#define KEY_U_ARROW    78
-#define KEY_L_ARROW    79
-#define KEY_D_ARROW    80
-#define KEY_R_ARROW    81
-#define KEY_NUM        82
-#define KEY_KP_SLASH   83
-#define KEY_KP_STAR    84
-#define KEY_KP_MINUS   85
-#define KEY_KP_PLUS    86
-#define KEY_KP_ENTER   87
-#define KEY_KP_DOT     88
-#define KEY_KP_0       89
-#define KEY_KP_1       90
-#define KEY_KP_2       91
-#define KEY_KP_3       92
-#define KEY_KP_4       93
-#define KEY_KP_5       94
-#define KEY_KP_6       95
-#define KEY_KP_7       96
-#define KEY_KP_8       97
-#define KEY_KP_9       98
-#define KEY_RBRACE     99
-#define KEY_SEMICOLON  100
-#define KEY_APOSTROPHE 101
-#define KEY_COMMA      102
-#define KEY_DOT        103
-#define KEY_SLASH      104
+#define KEY_SPACE      41
+#define KEY_TAB        42
+#define KEY_KP_SLASH   43
+#define KEY_KP_STAR    44
+#define KEY_KP_MINUS   45
+#define KEY_KP_PLUS    46
+#define KEY_KP_DOT     47
+#define KEY_KP_0       48
+#define KEY_KP_1       49
+#define KEY_KP_2       50
+#define KEY_KP_3       51
+#define KEY_KP_4       52
+#define KEY_KP_5       53
+#define KEY_KP_6       54
+#define KEY_KP_7       55
+#define KEY_KP_8       56
+#define KEY_KP_9       57
+#define KEY_RBRACE     58
+#define KEY_SEMICOLON  59
+#define KEY_APOSTROPHE 60
+#define KEY_COMMA      61
+#define KEY_DOT        62
+#define KEY_SLASH      63
+#define KEY_LBRACE     64
+
+#define KEY_BACKSPACE  65
+#define KEY_CAPS_LOCK  66
+#define KEY_LSHIFT     67
+#define KEY_LCTRL      68
+#define KEY_LGUI       69
+#define KEY_LALT       70
+#define KEY_RSHIFT     71
+#define KEY_RCTRL      72
+#define KEY_RGUI       73
+#define KEY_RALT       74
+#define KEY_APPS       75
+#define KEY_ENTER      76
+#define KEY_KP_ENTER   77
+#define KEY_ESCAPE     78
+#define KEY_F1         79
+#define KEY_F2         80
+#define KEY_F3         81
+#define KEY_F4         82
+#define KEY_F5         83
+#define KEY_F6         84
+#define KEY_F7         85
+#define KEY_F8         86
+#define KEY_F9         87
+#define KEY_F10        88
+#define KEY_F11        89
+#define KEY_F12        90
+#define KEY_PRINT_SCR  91
+#define KEY_SCROLL_LOCK 92
+#define KEY_PAUSE      93
+#define KEY_INSERT     94
+#define KEY_HOME       95
+#define KEY_PG_UP      96
+#define KEY_DELETE     97
+#define KEY_END        98
+#define KEY_PG_DOWN    99
+#define KEY_U_ARROW    100
+#define KEY_L_ARROW    101
+#define KEY_D_ARROW    102
+#define KEY_R_ARROW    103
+#define KEY_NUM_LOCK   104
 //"ACPI" keys
 #define KEY_POWER      105
 #define KEY_SLEEP      106
@@ -129,16 +130,30 @@
 #define KEY_WWW_SEARCH 119
 #define KEY_WWW_HOME   120
 #define KEY_WWW_BACK   121
-#define KEY_WWW_FORWRD 122
+#define KEY_WWW_FORWARD 122
 #define KEY_WWW_STOP   123
 #define KEY_WWW_REFRSH 124
 #define KEY_WWW_FAV    125
 #define LAST_KEY       KEY_WWW_FAV
 
+#define IS_PRINTABLE_KEY(x) (x<=KEY_LBRACE&&x>KEY_NONE)
+#define IS_ALPHA_KEY(x) (x<=KEY_Z&&x>KEY_NONE)
+
 //Key states
 #define KEY_STATE_UP   0
 #define KEY_STATE_DOWN 1
 #define KEY_STATE_HELD 2
+
+//Status Mask
+#define STATUS_SCROLL_LOCK 0x1
+#define STATUS_NUM_LOCK 0x2
+#define STATUS_CAPS 0x4
+#define STATUS_KANA 0x8
+//Other bits
+#define STATUS_SHIFT 0x10
+#define STATUS_CTRL 0x20
+#define STATUS_ALT 0x40
+#define STATUS_ALTGR 0x80
 
 /**
  * Initializes the keyboard
@@ -146,12 +161,36 @@
 void keyboard_init(void);
 
 /**
+ * Reads a key from the buffer
+ * @return The key from the buffer, or KEY_NONE if the buffer is empty
+ */
+ubyte_t keyboard_readKey();
+
+/**
+ * Gets the state of the specified key
+ * @param key The key to get the state from
+ * @return The current state of the key specified
+ */
+ubyte_t keyboard_getKeyState(ubyte_t key);
+
+/**
+ * Gets the current key status
+ * Used with STATUS_* macros
+ * @return The current key status
+ */
+ubyte_t keyboard_getStatus(void);
+
+/**
+ * Sets the mapping for the keyboard to use
+ * @param base The base address to the mapping
+ */
+void keyboard_setMapping(udword_t base);
+
+/**
  * Gets a char based on the current charmap
  * @param keycode The keycode that corresponds to the key on the keyboard
  * @return The char from the current char mapping
  */
 char keyboard_getChar(uint8_t keycode);
-
-ubyte_t keyboard_readKey();
 
 #endif

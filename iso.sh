@@ -15,4 +15,4 @@ cp ./kernel/condor.kern ./isodir/boot/condor.kern
 # Copy programs
 cp -Ru userland/programs/bin/ isodir/boot/programs/
 
-i686-grub-mkrescue -o condor.iso ./isodir
+grub-mkrescue -o condor.iso ./isodir
