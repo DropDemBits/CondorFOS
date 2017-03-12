@@ -54,10 +54,11 @@ static uint8_t terminal_specialChar(const char c)
                 terminal_putEntryAt(terminal_column, terminal_row, vga_makeEntry(' ', default_color));
                 if(++terminal_column > VGA_WIDTH) {
                     terminal_column = 0;
-                    if(++terminal_row > VGA_HEIGHT)
+                    if(++terminal_row >= VGA_HEIGHT)
                         terminal_scroll();
                 }
             }
+        terminal_moveCursor(terminal_column, terminal_row);
         return 1;
     }
 
@@ -152,20 +153,21 @@ void terminal_puts(const char* string)
 
 void terminal_scroll(void)
 {
-    
-    
-    //Push all the lines up by one
-    for(size_t index = VGA_WIDTH; index < VGA_WIDTH * VGA_HEIGHT; index++)
-    {
-        vga_buffer[index-VGA_WIDTH] = vga_buffer[index];
-    }
-    
-    //Clear last line
-    for(size_t x = 0; x < VGA_WIDTH; x++)
-    {
-        vga_buffer[x+((VGA_HEIGHT-1)*VGA_WIDTH)] = 0x0000;
-    }
-    
+    asm("movl $0xC00B80A0, %%esi\n\t"
+        "movl $0xC00B8000, %%edi\n\t"
+        "movl $0x3E8, %%ecx\n\t"
+        "pushf\n\t"
+        "cld\n\t"
+        "rep movsd\n\t"
+        "movl $0x19, %%ecx\n\t"
+        "movl $0xC00B8FA0, %%edi\n\t"
+        "movl %0, %%eax\n\t"
+        "shl $8, %%eax\n\t"
+        "orl %0, %%eax\n\t"
+        "shl $8, %%eax\n\t"
+        "rep stosw\n\t"
+        "popf\n\t"::"m"(default_color));
+    terminal_column = 0;
     terminal_row--;
 }
 
