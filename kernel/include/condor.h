@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <kernel/liballoc.h>
 
-#ifndef CONDOR_KERNEL_H
-#define CONDOR_KERNEL_H
+#ifndef _CONDOR_H
+#define _CONDOR_H
 
 //Macros
 

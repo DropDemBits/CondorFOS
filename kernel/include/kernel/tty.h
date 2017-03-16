@@ -1,8 +1,8 @@
 #include <stdint.h>
 #include <kernel/vga.h>
 
-#ifndef TTY_H
-#define TTY_H
+#ifndef _TTY_H
+#define _TTY_H
 
 /**
  * Clears the terminal

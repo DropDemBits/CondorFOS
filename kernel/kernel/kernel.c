@@ -140,6 +140,8 @@ void kmain()
     udword_t* version = getKernelVersion();
     printf(KERNEL_VERSION_FORMATER, version[0], version[1], version[2], getKernelRelType(version[3]));
     printf(")\n");
+    printf("%d\n", controller_getType(DEV2));
+    while(keyboard_readKey()) asm("pause");
 
     ubyte_t last_state = 0;
 
@@ -152,7 +154,7 @@ void kmain()
             if(keyboard_getChar(new_char)) printf("%c", keyboard_getChar(new_char));
             last_state = keyboard_getKeyState(new_char);
         } else last_state = 0;
-        putchar('a');
+
         asm("hlt");
     }
 }

@@ -24,8 +24,8 @@
 
 #include <condor.h>
 
-#ifndef DEV_CONTROL_H
-#define DEV_CONTROL_H
+#ifndef _DEV_CONTROL_H
+#define _DEV_CONTROL_H
 
 #define DEV1 0
 #define DEV2 1
@@ -44,9 +44,15 @@
 #define PS2_ACK     0xFA
 #define PS2_RESEND  0xFE
 
+#define RET_SUCCESS 0x0
+#define RET_FAIL 0x1
+//Note: These are masks
+#define RET_NODEV 0x2
+#define RET_NOCTRL 0x4
+
 //TODO: Abstract using HAL
 
-void controller_init(void);
+ubyte_t controller_init(void);
 
 void controller_handleDevice(int device, uqword_t func);
 
@@ -56,10 +62,10 @@ ubyte_t controller_readDataFrom(int device);
 
 ubyte_t controller_getType(int device);
 
+void controller_clearBuffer();
+
 int controller_getKeyboardDev();
 
 int controller_getMouseDev();
 
-ubyte_t controller_useKeyboardFallback();
-
-#endif /* DEV_CONTROL */
+#endif /* _DEV_CONTROL */

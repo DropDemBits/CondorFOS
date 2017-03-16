@@ -1,8 +1,8 @@
 #include <kernel/dev_control.h>
 #include <io.h>
 
-#ifndef KEYBOARD_H
-#define KEYBOARD_H
+#ifndef _KEYBOARD_H
+#define _KEYBOARD_H
 
 //Regular Keyboard
 #define KEY_NONE       0

@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* 
+/*
  * File:   pmm.h
  * Author: DrompDemBits
  *
@@ -25,8 +25,8 @@
 #include <kernel/addrs.h>
 #include <condor.h>
 
-#ifndef PMM_H
-#define PMM_H
+#ifndef _PMM_H
+#define _PMM_H
 
 /**
  * Memory region structure
@@ -51,7 +51,7 @@ typedef struct {
 
 /**
  * void pmm_setRegionBase(physical_addr_t region_base)
- * 
+ *
  * Sets the region base
  * @param region_base The base address of the region structures
  */
@@ -59,7 +59,7 @@ void pmm_setRegionBase(physical_addr_t region_base);
 
 /**
  * void pmm_init(size_t memory_size, size_t bitmap_location);
- * 
+ *
  * Initializes the PMM
  * @param memory_size The size of the physical memory
  * @param bitmap_location The destination of the bitmap
@@ -68,7 +68,7 @@ void pmm_init(size_t memory_size, physical_addr_t bitmap_location);
 
 /**
  * void pmm_setRegion(physical_addr_t region_start, size_t region_size);
- * 
+ *
  * Sets a region in the bitmap for preventing allocation
  * @param region_start The physical address of the region to set
  * @param region_size The size of the region to set
@@ -77,7 +77,7 @@ void pmm_setRegion(physical_addr_t region_start, size_t region_size);
 
 /**
  * void pmm_clearRegion(physical_addr_t region_start, size_t region_size);
- * 
+ *
  * Clears a region in the bitmap for allocation
  * @param region_start The physical address of the region to clear
  * @param region_size The size of the region to clear
@@ -86,7 +86,7 @@ void pmm_clearRegion(physical_addr_t region_start, size_t region_size);
 
 /**
  * pmm_isInited(void);
- * 
+ *
  * Checks if the PMM has initialized
  * @return The initialization status of the PMM
  */
@@ -94,7 +94,7 @@ ubyte_t pmm_isInited(void);
 
 /**
  * physical_addr_t* pmalloc();
- * 
+ *
  * Allocates page size blocks
  * @return The address to the allocated block
  */
@@ -102,11 +102,10 @@ physical_addr_t* pmalloc(void);
 
 /**
  * void pfree(physical_ptr_t address);
- * 
+ *
  * Frees an address to be reused
  * @param address The address to free
  */
 void pfree(physical_addr_t* address);
 
 #endif /** PMM_ H */
-

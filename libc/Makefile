@@ -1,11 +1,10 @@
-TARGET_ARCH=i386
-OBJ=
-CC=i686-elf-gcc
-AR=i686-elf-ar
-
+TARGET_ARCH?=
+CC?=
+AR?=
 DESTDIR?=
 PREFIX?=/usr/local
 
+OBJ=
 CFLAGS=-Wall -Wextra -ffreestanding
 CPPFLAGS=-D__LIBC_BUILD -I$(DESTDIR)$(PREFIX)/include
 LIBK_CFLAGS=$(CFLAGS) -ffreestanding -fbuiltin

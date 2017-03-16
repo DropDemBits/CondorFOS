@@ -1,7 +1,7 @@
 #include <stdint.h>
 
-#ifndef IDT_H
-#define IDT_H
+#ifndef _IDT_H
+#define _IDT_H
 
 #define ISR_32_TASKGATE  0x5
 #define ISR_16_TRAPGATE  0x6

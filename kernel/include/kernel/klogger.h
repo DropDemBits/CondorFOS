@@ -1,7 +1,7 @@
 #include <stdint.h>
 
-#ifndef KLOGGER_H
-#define KLOGGER_H
+#ifndef _KLOGGER_H
+#define _KLOGGER_H
 
 /* Log levels */
 #define LOG_FATAL   +3

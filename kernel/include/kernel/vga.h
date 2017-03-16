@@ -1,7 +1,7 @@
 #include <stdint.h>
 
-#ifndef VGA_H
-#define VGA_H
+#ifndef _VGA_H
+#define _VGA_H
 
 #define VGA_MEMORY 0xC00B8000
 #define VGA_WIDTH 80

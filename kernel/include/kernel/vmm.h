@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* 
+/*
  * File:   vmm.h
  * Author: DropDemBits <r3usrlnd@gmail.com>
  *
@@ -25,8 +25,8 @@
 #include <condor.h>
 #include <kernel/addrs.h>
 
-#ifndef VMM_H
-#define VMM_H
+#ifndef _VMM_H
+#define _VMM_H
 
 #define PAGE_PRESENT   0x00000001
 #define PAGE_RW        0x00000002
@@ -36,7 +36,7 @@
 
 /**
  * Maps a linear address to a physical address
- * 
+ *
  * @param paddr The physical address to map to
  * @param laddr The linear address to map
  * @param flags The flags of the mapping
@@ -46,7 +46,7 @@ ubyte_t map_address(linear_addr_t* paddr, physical_addr_t* laddr, uqword_t flags
 
 /**
  * Unmaps a linear address
- * 
+ *
  * @param laddr The linear address to unmap
  * @return The physical address that the linear address mapped to
  */
@@ -72,5 +72,4 @@ void freeAddrs(void* addr, size_t length);
 void switchPageBase(udword_t pageAddr);
 */
 
-#endif /* VMM_H */
-
+#endif /* _VMM_H */

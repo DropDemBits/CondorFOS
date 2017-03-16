@@ -1,4 +1,6 @@
-TARGET_ARCH=i386
+TARGET_ARCH?=
+CC?=
+AR?=
 
 ARCH_OBJ=
 ARCH_LDFLAGS=
@@ -15,7 +17,6 @@ INCLUDE_DIRS=$(SYSROOT)$(PREFIX)/include $(ARCH_INCLUDE_DIRS)
 ISO=condor.iso
 KERN=condor.kern
 
-CC=i686-elf-gcc
 CFLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Werror -Wextra -g $(addprefix -I,$(INCLUDE_DIRS)) -g
 LDFLAGS=-ffreestanding -O2 -L$(SYSROOT)$(PREFIX)/lib $(addprefix -I,$(INCLUDE_DIRS)) $(ARCH_LDFLAGS)
 LIBS=-nostdlib -lgcc -lk

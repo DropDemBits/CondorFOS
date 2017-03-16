@@ -2,6 +2,6 @@
 set -e
 . ./iso.sh
 
-objcopy --only-keep-debug ./kernel/condor.kern ./kernel/kern.sym
+i686-elf-objcopy --only-keep-debug ./kernel/condor.kern ./kernel/kern.sym
 nm kernel/condor.kern | grep " T " | awk '{print $1" "$3}' > condor.sym
-objcopy --strip-debug ./kernel/condor.kern
+i686-elf-objcopy --strip-debug ./kernel/condor.kern
