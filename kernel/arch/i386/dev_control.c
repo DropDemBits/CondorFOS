@@ -39,26 +39,28 @@ static ubyte_t waitACK(void)
 
 static void detectDevice(int device)
 {
-    //Disable scanning for device
-    outb(PS2_STT_CMD, 0xAD);
+    ubyte_t watch_dog = 0;
+    ubyte_t byte0 = 0;
+    ubyte_t byte1 = 0;
+    
     controller_sendDataTo(device, 0xF5);
     controller_sendDataTo(device, 0xF2);
-    while(!(inb(PS2_STT_CMD) ^ 0x01)) asm("pause");
+    while(!(inb(PS2_STT_CMD) & 0x01)) asm("pause");
     inb(PS2_DATA);
-    ubyte_t watch_dog = 0;
-    while(!(inb(PS2_STT_CMD) ^ 0x01) && watch_dog < 255)
+    
+    while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 255)
     {
         ++watch_dog;
         asm("pause");
     }
-    ubyte_t byte0 = controller_readDataFrom(device);
+    byte0 = controller_readDataFrom(device);
     watch_dog = 0;
-    while(!(inb(PS2_STT_CMD) ^ 0x01) && watch_dog < 255)
+    while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 255)
     {
         ++watch_dog;
         asm("pause");
     }
-    ubyte_t byte1 = controller_readDataFrom(device);
+    byte1 = controller_readDataFrom(device);
 
     if(byte0 == 0x00 && byte1 == 0x00) devType[device] = DEV_TYPE_PS2_MOUSE;
     else if(byte0 == 0x03 && byte1 == 0x03) devType[device] = DEV_TYPE_MOUSE_SCR;
@@ -72,8 +74,11 @@ static void detectDevice(int device)
 
 ubyte_t controller_init(void)
 {
-    //TODO: Make this less bulky
-
+    ubyte_t usable_channels = 0;
+    ubyte_t config = 0;
+    ubyte_t test_resp = 0;
+    ubyte_t check_resp = 0;
+    
     //Disable devices
     outb(PS2_STT_CMD, 0xAD);
     outb(PS2_STT_CMD, 0xA7);
@@ -83,7 +88,7 @@ ubyte_t controller_init(void)
 
     //Read config byte, then send back
     outb(PS2_STT_CMD, 0x20);
-    ubyte_t config = inb(PS2_DATA);
+    config = inb(PS2_DATA);
     outb(PS2_STT_CMD, 0x60);
 
     //Wait for buffer to be ready
@@ -97,7 +102,7 @@ ubyte_t controller_init(void)
     //Initiate self test
     outb(PS2_STT_CMD, 0xAA);
     while(!(inb(PS2_STT_CMD) ^ 0x01)) asm("pause");
-    ubyte_t test_resp = inb(PS2_DATA);
+    test_resp = inb(PS2_DATA);
     if(test_resp != 0x55)
     {
         if(test_resp == 0xFC) return RET_FAIL;
@@ -126,16 +131,16 @@ ubyte_t controller_init(void)
     }
 
     //Test ports
-    ubyte_t usable_channels = 0x1 | (hasDEV2 >> 4);
+    usable_channels = 0x1 | (hasDEV2 >> 4);
 
     outb(PS2_STT_CMD, 0xAB);
-    ubyte_t check_resp = inb(PS2_DATA);
+    check_resp = inb(PS2_DATA);
     if(check_resp != 0) usable_channels &= ~0x01;
 
     if(hasDEV2)
     {
         outb(PS2_STT_CMD, 0xA9);
-        ubyte_t check_resp = inb(PS2_DATA);
+        check_resp = inb(PS2_DATA);
         if(check_resp != 0)
         {
             usable_channels &= ~0x02;
@@ -169,16 +174,12 @@ ubyte_t controller_init(void)
 
     if(!usable_channels) return RET_FAIL | RET_NODEV;
 
-    printf("%#x", config);
-
     outb(PS2_STT_CMD, 0x60);
     outb(PS2_DATA, config);
 
     detectDevice(DEV1);
     if(hasDEV2) detectDevice(DEV2);
-
-    //Clear buffer
-    while(inb(PS2_STT_CMD) & 0x01) inb(PS2_DATA);
+    
     controller_clearBuffer();
     return RET_SUCCESS;
 }
