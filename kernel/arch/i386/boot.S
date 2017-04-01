@@ -49,7 +49,9 @@ tss_end:
 # GDT sections
 gdt_data:
 	# Null descriptor
-	.long 0, 0
+	.word gdt_end - gdt_data - 1
+	.long gdt_data
+	.word 0
 	# Kmode code segment
 	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00
 	# Kmode data segment
@@ -58,13 +60,12 @@ gdt_data:
 	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFA, 0xCF, 0x00
 	# Usermode data segment
 	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xF2, 0xCF, 0x00
-        #TSS
-        .long 0, 0
+    #TSS
+    .byte 0x67, 0x00
+    .word 0x0000
+    .byte 0x00, 0x89, 0x80, 0xC0
 gdt_end:
 
-gdtr:
-	.word gdt_end - gdt_data - 1
-	.long gdt_data
 .globl idt_data
 idt_data:
 	.skip 16384
@@ -75,6 +76,8 @@ idtr:
 	.long idt_data
 
 .align 4096
+
+.section .rodata
 # String store
 str_nosse:
 .long 0x70697072, 0x70727000
@@ -88,95 +91,97 @@ str_nosse:
 _start:
 	cli
         
-        # Preserve EAX and EBX
+    # Preserve EAX and EBX
 	movl %ebx, 0x00000500
 	movl %eax, 0x00000504
-        
-        # Check for SSE & SSE2
-        movl $0x1, %eax
-        cpuid
-        
-        test $(1<<26), %edx
-        jz .boohoo
-        
-        # Go Ahead and setup SSE
-        movl %cr0, %eax
-        andl $(~4), %eax
-        orl $2, %eax
-        movl %eax, %cr0
+    
+    # Check for SSE & SSE2
+    movl $0x1, %eax
+    cpuid
+    
+    test $(1<<26), %edx
+    jz .boohoo
+    
+    # Go Ahead and setup SSE
+    movl %cr0, %eax
+    andl $(~4), %eax
+    orl $2, %eax
+    movl %eax, %cr0
 
-        movl %cr4, %eax
-        orl $0x600, %eax
-        movl %eax, %cr4
+    movl %cr4, %eax
+    orl $0x600, %eax
+    movl %eax, %cr4
 
-        # Initialize paging
-        
-        # Setup registers
-        movl $0, %esi
-        movl $(pt0_start - KERNEL_VIRTUAL_BASE), %edi
-        movl $2048, %ecx
+    # Initialize paging
+    
+    # Setup registers
+    movl $0, %esi
+    movl $(pt0_start - KERNEL_VIRTUAL_BASE), %edi
+    movl $2048, %ecx
 
 .Lbegin_paging:
-        movl %esi, %edx
-        
-        cmpl $(kernel_start - KERNEL_VIRTUAL_BASE), %esi
-        jl .Lrw
-        cmpl $(ro_end - KERNEL_VIRTUAL_BASE), %esi
-        jge .Lrw
+    movl %esi, %edx
+    
+    cmpl $(kernel_end - KERNEL_VIRTUAL_BASE + 0x1000), %esi
+    jge .Ldone
+    cmpl $(kernel_start - KERNEL_VIRTUAL_BASE), %esi
+    jl .Lrw
+    cmpl $(ro_end - KERNEL_VIRTUAL_BASE), %esi
+    jge .Lrw
 
 .Lro:
-        orl $0x1, %edx
-        jmp .Lprep
-        jmp .Lprep
+    orl $0x1, %edx
+    jmp .Lprep
+    
 .Lrw:
-        orl $0x3, %edx
+    orl $0x3, %edx
 .Lprep: 
-        movl %edx, (%edi)
-        # Prepare for next cycle
-        addl $0x4, %edi
-        addl $0x1000, %esi
-        loop .Lbegin_paging
+    movl %edx, (%edi)
+    # Prepare for next cycle
+    addl $0x4, %edi
+    addl $0x1000, %esi
+    loop .Lbegin_paging
 
 .Ldone:
-        # Setup pages tables to be at index 0 and 768 (so that all kaddrs are above 0xC00000000)
-        movl $(pt0_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0x000
-        movl $(pt1_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0x004
-        movl $(pt0_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 768*4
-        movl $(pt1_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 769*4
-        movl $(pd_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0xffc
+    # Setup pages tables to be at index 0 and 768 (so that all kaddrs are above 0xC00000000)
+    movl $(pt0_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0x000
+    movl $(pt1_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0x004
+    movl $(pt0_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 768*4
+    movl $(pt1_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 769*4
+    movl $(pd_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0xffc
+    
+    # Load CR3
+    movl $(pd_start - KERNEL_VIRTUAL_BASE), %edi
+    movl %edi, %cr3
         
-        # Load CR3
-        movl $(pd_start - KERNEL_VIRTUAL_BASE), %edi
-        movl %edi, %cr3
-        
-        # Enable all goodies (pse, pge)
-        movl %cr4, %edx
-        orl $0x90, %edx
-        movl %edx, %cr4
+    # Enable all goodies (pse, pge)
+    movl %cr4, %edx
+    orl $0x90, %edx
+    movl %edx, %cr4
 
-        # Enable paging and WP
-        movl %cr0, %edx
-        orl $0x80010000, %edx
-        movl %edx, %cr0
+    # Enable paging and WP
+    movl %cr0, %edx
+    orl $0x80010000, %edx
+    movl %edx, %cr0
         
-        lea .LtoHigher, %eax
-        jmp *%eax
+    lea .LtoHigher, %eax
+    jmp *%eax
         
 .LtoHigher:
 
-        # Disable identity paging
-        movl $0, pd_start + 0x000
-        movl $0, pd_start + 0x004
+    # Disable identity paging
+    movl $0, pd_start + 0x000
+    movl $0, pd_start + 0x004
 
-        #Flush TLB
-        movl %cr3, %edx
-        movl %edx, %cr3
+    #Flush TLB
+    movl %cr3, %edx
+    movl %edx, %cr3
 
 	# Initialize stack
 	movl $stack_top, %esp
 
 	# Load GDT
-	lgdt (gdtr)
+	lgdt (gdt_data)
 
 	# Flush segment selectors
 	movw $0x10, %dx
@@ -193,11 +198,11 @@ _start:
 
 	lidt (idtr)
         
-        # Restore EAX and EBX
-        movl 0xC0000500, %ebx
+    # Restore EAX and EBX
+    movl 0xC0000500, %ebx
 	movl 0xC0000504, %eax
         
-        orl $KERNEL_VIRTUAL_BASE, %ebx
+    orl $KERNEL_VIRTUAL_BASE, %ebx
         
 	# Before anything interactive, init kernel
 	# Also push multiboot stuff
@@ -214,13 +219,13 @@ _start:
 	hlt
 	jmp .hang
 .boohoo:
-        movl $0x0F720F45, (0xb8000)
-        movl $0x0F3A0F72, (0xb8004)
-        movl $0x0C4E0C20, (0xb8008)
-        movl $0x0C200C6F, (0xb800c)
-        movl $0x0C530C53, (0xb8010)
-        movl $0x0C280C45, (0xb8014)
-        movl $0x0C290C32, (0xb8018)
-        jmp .hang
+    movl $0x0F720F45, (0xb8000)
+    movl $0x0F3A0F72, (0xb8004)
+    movl $0x0C4E0C20, (0xb8008)
+    movl $0x0C200C6F, (0xb800c)
+    movl $0x0C530C53, (0xb8010)
+    movl $0x0C280C45, (0xb8014)
+    movl $0x0C290C32, (0xb8018)
+    jmp .hang
         
 .size _start, . - _start

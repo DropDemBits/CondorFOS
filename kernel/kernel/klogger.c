@@ -25,7 +25,11 @@ void log(int16_t level, const char* string)
     if (level == LOG_WARNING) color = vga_makeColor(VGA_YELLOW, VGA_BLACK);
     if (level == LOG_ERROR)   color = vga_makeColor(VGA_LIGHT_RED, VGA_BLACK);
     if (level == LOG_FATAL)   color = vga_makeColor(VGA_RED, VGA_BLACK);
-    if (level >  LOG_FATAL)  {color = vga_makeColor(VGA_LIGHT_BLUE, VGA_BLACK); index = LOG_FATAL+3;}
+    if (level >  LOG_FATAL || level < LOG_FINE) 
+    {
+        color = vga_makeColor(VGA_LIGHT_BLUE, VGA_BLACK);
+        index = LOG_FATAL-LOG_FINE+1;
+    }
 
     terminal_putchar_Color('[', vga_makeColor(VGA_WHITE, VGA_BLACK));
     terminal_puts_Color(levels[index], color);

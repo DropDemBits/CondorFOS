@@ -90,9 +90,9 @@ void kexit(int status)
 
 void kpanic(const char* message)
 {
-    //udword_t rsp = 0;
-    //asm("movl %%esp, %0" : "=m"(rsp) :: "memory");
-    //kdumpStack((uqword_t*)rsp, (udword_t)&stack_bottom);
+    udword_t rsp = 0;
+    asm("movl %%esp, %0" : "=m"(rsp) :: "memory");
+    kdumpStack((uqword_t*)rsp, (udword_t)&stack_bottom);
     
     logFErr(message);
     
@@ -108,6 +108,8 @@ void kputchar(const char c)
 void kdump_useStack(uqword_t* rsp)
 {
     udword_t* esp = (udword_t*)rsp;
+    
+    kdumpStack((uqword_t*)esp, (udword_t)&stack_top);
     
     //Registers
     uint16_t cs =     *(esp+15) & 0xFFFF;
@@ -211,6 +213,8 @@ void kdump_useStack(uqword_t* rsp)
 
 void kdump_useRegs(uqword_t rip)
 {
+    //This requires the TSS, or some form of saving registers
+    
     //Registers
     uint16_t cs =     0;//__readReg(6);
     uint16_t ds =     0;//__readReg(7);
@@ -241,17 +245,22 @@ void kdump_useRegs(uqword_t rip)
     printf("EFLAGS: %#lx\n", eflags);
     printf("EIP: %#lx\n", (udword_t)rip);
     printf("CR0: %lx, CR2: %lx, CR3: %lx, CR4: %lx\n", readCR0(), readCR2(), readCR3(), readCR4());
-    kdumpStack((uqword_t*)esp, (udword_t)&stack_bottom);
+    kdumpStack((uqword_t*)esp, (udword_t)&stack_top);
 }
 
 void kdumpStack(uqword_t* rsp, udword_t ebp)
 {
     char buffer[512];
     udword_t* esp = (udword_t*) rsp;
-    for(udword_t* ind = esp; ((udword_t)ind) > ebp; ind -= 4)
+    ubyte_t formatting = 0;
+    for(udword_t* ind = esp; ((udword_t)ind) < ebp; ind++)
     {
-        //Don't bother to dump stack to screen
-        //printf("[STACK|%#lx] [%#lx]\n", ind, *ind);
+        printf("%#lx ", *ind);
+        if(formatting++ > 5)
+        {
+            formatting = 0;
+            putchar('\n');
+        }
         serial_writes(COM1, "[STACK|");
         itoa((udword_t)ind, buffer, 16);
         serial_writes(COM1, buffer);
@@ -260,4 +269,5 @@ void kdumpStack(uqword_t* rsp, udword_t ebp)
         serial_writes(COM1, buffer);
         serial_writes(COM1, "]\n");
     }
+    putchar('\n');
 }

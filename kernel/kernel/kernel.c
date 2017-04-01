@@ -3,14 +3,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <kernel/dev_control.h>
+#include <kernel/hal.h>
 #include <kernel/keyboard.h>
 #include <kernel/klogger.h>
 #include <kernel/pmm.h>
-#include <kernel/timer_hal.h>
 #include <kernel/tty.h>
 #include <kernel/vmm.h>
-#include <kernel/pic_hal.h>
+#include <kernel/ata.h>
 #include <condor.h>
 #include <serial.h>
 
@@ -32,9 +31,9 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         printf("EBX is %lx\n", info_struct);
         kpanic("Not loaded by a multiboot bootloader");
     }
-
+    
     printf("Kernel (Start: %lx, End: %lx)\n", &kernel_start, &kernel_end);
-
+    
     int mem_pages = 1;
     uqword_t mem_size = 0;
     if(info_struct->flags & (1 << 6))
@@ -64,7 +63,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     if(!mem_size) kpanic("Unable to get memory size");
 
     //Remove regions already occupied/mapped
-    pmm_setRegion(0x0, 0x00800000);
+    pmm_setRegion(0x0, (size_t)&kernel_end - KERNEL_BASE);
 
     if(info_struct->flags & 0x1)
     {
@@ -87,16 +86,19 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         logInfo("Bootloader has loaded modules\n");
         printf("Number of modules: %d\n", info_struct->mods_count);
     }
-
+    
+    logNorm("Initializing Generic ATA Driver\n");
+    ata_init();
+    
     logNorm("Initializing Timer\n");
-    timer_init();
-
-    logNorm("Initializing PS/2 Controller\n");
-    controller_init();
+    hal_initTimer();
+    
+    logNorm("Initializing Device Controller\n");
+    hal_initController();
 
     logNorm("Initializing keyboard\n");
     keyboard_init();
-
+    
     //Do tests
 
     logNorm("Testing PMM\n");
@@ -132,7 +134,6 @@ static char* getKernelRelType(udword_t type)
 
 void kmain()
 {
-    serial_writes(COM1, "all\n");
     logNorm("Successfully Initialized kernel\n");
     terminal_puts("\nWelcome to ");
     terminal_puts_Color("Condor!", vga_makeColor(VGA_WHITE, VGA_BLACK));
@@ -140,9 +141,24 @@ void kmain()
     udword_t* version = getKernelVersion();
     printf(KERNEL_VERSION_FORMATER, version[0], version[1], version[2], getKernelRelType(version[3]));
     printf(")\n");
-    printf("%d\n", controller_getType(DEV2));
     while(keyboard_readKey()) asm("pause");
-
+    
+    printf("\nWritting to disk...\n");
+    
+    uword_t* sect = kmalloc(256*16);
+    memset(sect, 'a', 256*16);
+    sect[255] = 0x2100 | 'h';
+    ata_writeSectors(ATA_DEVICE_2, 0, 1, sect);
+    
+    printf("Reading from disk...\n");
+    ata_readSectors(ATA_DEVICE_2, 0, 1, sect);
+    for(uword_t i = 0; i < 256; i++)
+    {
+        printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
+    }
+    printf("\n");
+    kfree(sect);
+    
     ubyte_t last_state = 0;
 
     while(1)
@@ -155,6 +171,6 @@ void kmain()
             last_state = keyboard_getKeyState(new_char);
         } else last_state = 0;
 
-        asm("hlt");
+        asm("pause");
     }
 }

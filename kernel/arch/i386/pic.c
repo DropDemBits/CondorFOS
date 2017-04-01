@@ -21,7 +21,7 @@
 #define ICW4_AUTO	    0x02	/* Auto (normal) EOI */
 #define ICW4_BUF_SLAVE	0x08	/* Buffered mode/slave */
 #define ICW4_BUF_MASTER	0x0C	/* Buffered mode/master */
-#define ICW4_SFNM	    0x10	/* Special fully nested (not) */
+#define ICW4_SFNM	    0x10	/* Special fully nested */
 
 void pic_init(uint16_t irq0Base, uint16_t irq8Base)
 {
@@ -60,11 +60,6 @@ void pic_init(uint16_t irq0Base, uint16_t irq8Base)
     outb(PIC2_DATA, mask2);
 }
 
-void pic_getBase()
-{
-    return;
-}
-
 void pic_ack(uint16_t irq)
 {
     if(irq > 15) return;
@@ -87,7 +82,7 @@ void pic_maskIRQ(uint16_t irq)
     outb(port, mask);
 }
 
-void pic_clearIRQ(uint16_t irq)
+void pic_unmaskIRQ(uint16_t irq)
 {
     if(irq > 15) return;
     uint16_t port = PIC1_DATA;
@@ -111,48 +106,4 @@ void pic_write(uint32_t reg, uint32_t value)
     if(reg != PIC1_COMMAND && reg != PIC2_COMMAND && reg != PIC1_DATA && reg != PIC2_DATA) return;
     outb(reg, value);
     return;
-}
-
-/* Initializes a timer (Does the appropriate things) */
-void ic_init(uint16_t irqBase)
-{
-    pic_init(irqBase, irqBase+8);
-}
-
-void ic_getBase()
-{
-    pic_getBase();
-}
-
-void ic_ack(uint16_t irq)
-{
-    pic_ack(irq);
-}
-
-void ic_maskIRQ(uint16_t irq)
-{
-    pic_maskIRQ(irq);
-}
-
-void ic_clearIRQ(uint16_t irq)
-{
-    pic_clearIRQ(irq);
-}
-
-void* dummy(void* addr)
-{
-    return addr;
-}
-
-/* The addr is ignored for the PIC */
-uint32_t ic_read(void* addr, uint32_t reg)
-{
-    dummy(addr);
-    return pic_read(reg);
-}
-/* The addr is ignored for the PIC */
-void ic_write(void *addr, uint32_t reg, uint32_t value)
-{
-    dummy(addr);
-    pic_write(reg, value);
 }

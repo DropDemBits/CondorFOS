@@ -12,12 +12,13 @@ condor.kern
 condor.iso
 
 # Bochs stuff
-bochsrc
+*bochsrc*
 logfile.txt
 com1.txt
 com2.txt
 com3.txt
 com4.txt
+snapshot.txt
 
 # Code::blocks stuff
 *.cbp

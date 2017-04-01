@@ -16,7 +16,7 @@
  */
 
 /*
- * File:   dev_control.h
+ * File:   ps2.h
  * Author: DropDemBits <r3usrlnd@gmail.com>
  *
  * Created on March 4, 2017, 10:15 AM
@@ -24,8 +24,8 @@
 
 #include <condor.h>
 
-#ifndef _DEV_CONTROL_H
-#define _DEV_CONTROL_H
+#ifndef _PS2_H
+#define _PS2_H
 
 #define DEV1 0
 #define DEV2 1
@@ -50,22 +50,18 @@
 #define RET_NODEV 0x2
 #define RET_NOCTRL 0x4
 
-//TODO: Abstract using HAL
+ubyte_t ps2_init(void);
 
-ubyte_t controller_init(void);
+void ps2_handleDevice(int device, uqword_t func);
 
-void controller_handleDevice(int device, uqword_t func);
+int ps2_sendDataTo(int device, ubyte_t data);
 
-int controller_sendDataTo(int device, ubyte_t data);
+ubyte_t ps2_readDataFrom(int device);
 
-ubyte_t controller_readDataFrom(int device);
+ubyte_t ps2_getType(int device);
 
-ubyte_t controller_getType(int device);
+void ps2_clearBuffer();
 
-void controller_clearBuffer();
-
-int controller_getKeyboardDev();
-
-int controller_getMouseDev();
+int ps2_getDevHID(int hid);
 
 #endif /* _DEV_CONTROL */

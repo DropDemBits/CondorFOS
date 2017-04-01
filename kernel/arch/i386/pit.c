@@ -36,44 +36,27 @@ uint32_t pit_getTicks()
     return _timer_ticks;
 }
 
-uint32_t pit_getSeconds()
+uint32_t pit_getMillis()
 {
-    return _timer_ticks % 36;
+    return _timer_ticks / MILLI_INTERVAL;
 }
 
-void pit_sleep(uint32_t ticks)
-{
-    uint32_t start_ticks = _timer_ticks;
-    while(_timer_ticks >= (ticks+start_ticks)) asm("hlt");
-    return;
-}
-
-void timer_init()
-{
-    pit_init();
-}
-
-void timer_createCounter(uint32_t frequencey, uint8_t counter, uint8_t mode)
-{
-    pit_createCounter(frequencey, counter, mode);
-}
-
-uint32_t timer_getTicks()
-{
-    return _timer_ticks;
-}
-
-uint32_t timer_getMillis()
-{
-    return _timer_millis;
-}
-
-void sleep(uint32_t ticks)
+void pit_tsleep(uint32_t ticks)
 {
     //TODO: Make thread safe
     asm("pushf\n\tsti");
     volatile uint32_t end_ticks = _timer_ticks+ticks;
-    while(_timer_ticks <= end_ticks) asm("pause");
+    while(_timer_ticks <= end_ticks) asm("hlt");
+    asm("popf");
+    return;
+}
+
+void pit_sleep(uint32_t millis)
+{
+    //TODO: Make thread safe
+    asm("pushf\n\tsti");
+    volatile uint32_t end_millis = _timer_millis+millis;
+    while(_timer_millis <= end_millis) asm("hlt");
     asm("popf");
     return;
 }

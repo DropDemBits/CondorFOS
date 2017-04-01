@@ -1,6 +1,6 @@
 #include <kernel/idt.h>
 #include <kernel/klogger.h>
-#include <kernel/pic_hal.h>
+#include <kernel/hal.h>
 #include <kernel/pmm.h>
 #include <condor.h>
 #include <stdio.h>
@@ -115,12 +115,6 @@ void isr_handler(uint32_t* esp)
     
     if(!isrs[*(esp+12)]) {
         if(int_num > 31) int_num = 32;
-        //printf("ESP: %lx\n", esp);
-        //Serial dump int num
-        uint32_t print_int = *(esp+12);
-        serial_writechar(COM1, print_int % 10 + '0');
-        print_int /= 10;
-        serial_writechar(COM1, print_int % 10 + '0');
         
         if(pmm_isInited()) kdump_useStack((uqword_t*)esp);
         printf("ERR: %#x\n", err_code);
@@ -139,7 +133,7 @@ void isr_handler(uint32_t* esp)
 void irq_handler(uint32_t* esp)
 {
     uint16_t int_num = *(esp+12) & 0xFFFF;
-
+    
     void (*handler)(uint32_t*);
     if(isrs[int_num]) {
         handler = (void*) isrs[int_num];
@@ -216,7 +210,7 @@ void idt_init(uint32_t memory_location)
     idt_registerInterrupt(29, (uint32_t)isr29, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(30, (uint32_t)isr30, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(31, (uint32_t)isr31, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    ic_init(IRQ0);
+    hal_initPIC(IRQ0);
     //Hardware interrupts
     idt_registerInterrupt(IRQ0,  (uint32_t)isr32, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(IRQ1,  (uint32_t)isr33, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
@@ -234,9 +228,9 @@ void idt_init(uint32_t memory_location)
     idt_registerInterrupt(IRQ13, (uint32_t)isr45, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(IRQ14, (uint32_t)isr46, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(IRQ15, (uint32_t)isr47, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    //Mask all but irqs 0, 1, 12, 14 and 15
-    ic_clearIRQ(0);
-    ic_clearIRQ(1);
+    //Mask all but irqs 0, 1, and 12
+    ic_unmaskIRQ(0);
+    ic_unmaskIRQ(1);
     ic_maskIRQ(2);
     ic_maskIRQ(3);
     ic_maskIRQ(4);
@@ -247,10 +241,10 @@ void idt_init(uint32_t memory_location)
     ic_maskIRQ(9);
     ic_maskIRQ(10);
     ic_maskIRQ(11);
-    ic_clearIRQ(12);
+    ic_unmaskIRQ(12);
     ic_maskIRQ(13);
-    ic_clearIRQ(14);
-    ic_clearIRQ(15);
+    ic_unmaskIRQ(14);
+    ic_unmaskIRQ(15);
 
     //Add default ISRs
     idt_addISR(0, (uint32_t)default_div0_isr);

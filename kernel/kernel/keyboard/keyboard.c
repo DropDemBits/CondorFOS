@@ -1,6 +1,5 @@
 #include <kernel/keyboard.h>
-#include <kernel/dev_control.h>
-#include <kernel/timer_hal.h>
+#include <kernel/hal.h>
 #include <kernel/tty.h>
 #include <condor.h>
 
@@ -70,7 +69,7 @@ ubyte_t keyboard_getKeyState(ubyte_t key)
 
 void keyboard_isr()
 {
-    ubyte_t keycode = controller_readDataFrom(controller_getKeyboardDev());
+    ubyte_t keycode = controller_readDataFrom(controller_getDevHID(HID_KEYBOARD));
 
     if(keycode == 0xE0)
     {
@@ -161,10 +160,10 @@ void keyboard_isr()
 
 void keyboard_init(void)
 {
-    controller_handleDevice(controller_getKeyboardDev(), (udword_t) keyboard_isr);
-    controller_sendDataTo(controller_getKeyboardDev(), 0xF0);
-    controller_sendDataTo(controller_getKeyboardDev(), 0x02);
-    controller_sendDataTo(controller_getKeyboardDev(), 0xF4);
+    controller_handleDevice(controller_getDevHID(HID_KEYBOARD), (udword_t) keyboard_isr);
+    controller_sendDataTo(controller_getDevHID(HID_KEYBOARD), 0xF0);
+    controller_sendDataTo(controller_getDevHID(HID_KEYBOARD), 0x02);
+    controller_sendDataTo(controller_getDevHID(HID_KEYBOARD), 0xF4);
 }
 
 ubyte_t keyboard_readKey()

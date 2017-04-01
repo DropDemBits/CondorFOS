@@ -1,4 +1,4 @@
-#include <kernel/dev_control.h>
+#include <condor.h>
 #include <io.h>
 
 #ifndef _KEYBOARD_H
@@ -191,6 +191,6 @@ void keyboard_setMapping(udword_t base);
  * @param keycode The keycode that corresponds to the key on the keyboard
  * @return The char from the current char mapping
  */
-char keyboard_getChar(uint8_t keycode);
+char keyboard_getChar(ubyte_t keycode);
 
 #endif

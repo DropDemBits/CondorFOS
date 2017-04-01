@@ -42,7 +42,7 @@
  * @param flags The flags of the mapping
  * @return 1 if mapping had failed
  */
-ubyte_t map_address(linear_addr_t* paddr, physical_addr_t* laddr, uqword_t flags);
+ubyte_t map_address(linear_addr_t* laddr, physical_addr_t* paddr, uqword_t flags);
 
 /**
  * Unmaps a linear address

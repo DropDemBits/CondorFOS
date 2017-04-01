@@ -71,7 +71,6 @@ static physical_addr_t* stack_popAddr(void)
         stack_offset = ADDR_PER_BLOCK-1;
         
         if(*(stack_base) == 0)
-            //kpanic("Out of memory");
             return (physical_addr_t*)0;
     }
     else
@@ -80,7 +79,6 @@ static physical_addr_t* stack_popAddr(void)
     }
     
     if(ret_addr == 0)
-        //kpanic("Out of memory");
         return (physical_addr_t*)0;
     
     return ret_addr;
@@ -93,14 +91,25 @@ void pmm_setRegionBase(physical_addr_t region_base)
 
 void pmm_init(size_t memory_size, physical_addr_t memory_base)
 {
+    memory_size &= ~(BLOCK_SIZE-1);
+    
     stackpage_base = memory_base;
-    stackpage_limit = ((memory_base / (ADDR_PER_BLOCK-1)) << 12) + stackpage_base;
-    if(memory_base % ADDR_PER_BLOCK-1)
-        stackpage_limit += 0x1000;
+    stackpage_limit = ((memory_size / ADDR_PER_BLOCK)) + stackpage_base;
+    if(stackpage_limit & 0xFFF)
+    {
+        stackpage_limit &= ~0xFFF;
+        stackpage_limit += 0x2000;
+    }
         
     stack_base = (physical_addr_t*)memory_base;
     
     stack_limit = stack_base;
+    
+    //Load pages for PMM
+    for(physical_addr_t start = stackpage_base; start < stackpage_limit; start += 0x1000)
+    {
+        map_address((linear_addr_t*)start, (physical_addr_t*)(start - (physical_addr_t)&KERNEL_VIRTUAL_BASE), 0x3);
+    }
     *stack_base = 0;
     
     for(physical_addr_t addr = memory_size - BLOCK_SIZE; addr > 0; addr -= BLOCK_SIZE)
