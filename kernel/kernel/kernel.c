@@ -143,16 +143,23 @@ void kmain()
     printf(")\n");
     while(keyboard_readKey()) asm("pause");
     
-    printf("\nWritting to disk...\n");
+    printf("\nWritting to disk...\nData before write: \n");
     
-    uword_t* sect = kmalloc(256*16);
-    memset(sect, 'a', 256*16);
-    sect[255] = 0x2100 | 'h';
-    ata_writeSectors(ATA_DEVICE_2, 0, 1, sect);
+    uword_t* sect = kmalloc(256*256*16);
+    ata_readSectors(ATA_DEVICE_2, 0, 0, sect);
+    for(uword_t i = 0; i < 256*256; i++)
+    {
+        printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
+    }
     
-    printf("Reading from disk...\n");
-    ata_readSectors(ATA_DEVICE_2, 0, 1, sect);
-    for(uword_t i = 0; i < 256; i++)
+    memset(sect, 'A', 256*256*16);
+    sect[(256*256)-1] = 0x2100 | 'H';
+    ata_writeSectors(ATA_DEVICE_2, 0, 0, sect);
+    
+    printf("\nReading from disk...\n");
+    memset(sect, 0, 256*256*16);
+    ata_readSectors(ATA_DEVICE_2, 0, 0, sect);
+    for(uword_t i = 0; i < 256*256; i++)
     {
         printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
     }
