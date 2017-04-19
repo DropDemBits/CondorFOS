@@ -16,7 +16,7 @@
  */
 
 #include <stdio.h>
-
+#include <string.h>
 #include <kernel/idt.h>
 #include <kernel/pmm.h>
 #include <kernel/vmm.h>
@@ -42,6 +42,7 @@ static ubyte_t smap_page(linear_addr_t* laddr, physical_addr_t* paddr, uword_t f
     if(!(PAGE_DIRECTORY[pd_index] & PAGE_PRESENT))
     {
         PAGE_DIRECTORY[pd_index] = (physical_addr_t)pmalloc() | 0x00000003;
+        memset((linear_addr_t*)(PAGE_DIRECTORY[pd_index] & (~0xFFF)), 0, 4096);
         flush_tlb(laddr);
     }
     if(PAGE_TABLE_BASE[pt_index] & PAGE_PRESENT)

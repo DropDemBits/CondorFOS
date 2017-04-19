@@ -103,13 +103,14 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
 
     logNorm("Testing PMM\n");
     physical_addr_t* paddr1 = pmalloc();
+    printf("PADDR1 %#lx", paddr1);
     linear_addr_t* laddr = (linear_addr_t*)0xFFB00000;
     map_address(laddr, paddr1, 0x3);
     *laddr = 0xB00FBEEF;
     unmap_address(laddr);
     physical_addr_t* paddr2 = pmalloc();
     map_address(laddr, paddr2, 0x3);
-    printf("PADDR1 %#lx, PADDR2 %#lx, AT ADDR: %#lx\n", paddr1, paddr2, *laddr);
+    printf(", PADDR2 %#lx, AT ADDR: %#lx\n", paddr2, *laddr);
     if(paddr1 != paddr2 || *laddr != 0xB00FBEEF) kpanic("PMM Test failed");
     unmap_address(laddr);
 
@@ -173,9 +174,6 @@ void kmain()
     	printf("\n");
     }
     kfree(sect);
-    
-    printf("\n\nwoosh\n\n");
-    printf("The PMM Test doesn't work without the above two lines (including this one)");
     
     ubyte_t last_state = 0;
 	
