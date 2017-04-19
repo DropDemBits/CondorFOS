@@ -17,6 +17,10 @@
 #define ATA_DEVICE_7 0x7
 #define ATA_DEVICE_INVALID 0xFF
 
+#define ATA_COMMAND_TYPE_READ 0
+#define ATA_COMMAND_TYPE_WRITE 1
+#define ATA_COMMAND_TYPE_MISC 2
+
 typedef struct _ATAInfo {
 	//Feature bits
 	uword_t command_size : 2;
@@ -59,6 +63,8 @@ typedef struct _ATAInfo {
 	
 	uword_t reserved7[8];
 	
+    //Can't be bothered to do packet only udma
+    
 	//MDMA
 	uword_t mdma0_support : 1;
 	uword_t mdma1_support : 1;
@@ -156,14 +162,23 @@ typedef struct _ATAInfo {
 	uword_t udma0_support : 1;
 	uword_t udma1_support : 1;
 	uword_t udma2_support : 1;
-	uword_t reserved21 : 5;
+	uword_t udma3_support : 1;
+	uword_t udma4_support : 1;
+	uword_t udma5_support : 1;
+	uword_t udma6_support : 1;
+	uword_t reserved21 : 1;
 	uword_t udma0_selected : 1;
 	uword_t udma1_selected : 1;
 	uword_t udma2_selected : 1;
-	uword_t reserved22[37];
+	uword_t udma3_selected : 1;
+	uword_t udma4_selected : 1;
+	uword_t udma5_selected : 1;
+	uword_t udma6_selected : 1;
+    uword_t reserved22 : 1;
+	uword_t reserved23[37];
 	
 	uword_t rm_media_status_notify_support : 2;
-	uword_t reserved23 : 14;
+	uword_t reserved24 : 14;
 	
 	//Security Status
 	uword_t security_support : 1;
@@ -172,13 +187,49 @@ typedef struct _ATAInfo {
 	uword_t security_frozen : 1;
 	uword_t security_count_expire : 1;
 	uword_t security_erase_support : 1;
-	uword_t reserved24 : 2;
+	uword_t reserved25 : 2;
 	uword_t security_level : 1;
-	uword_t reserved25 : 7;
+	uword_t reserved26 : 7;
 	
 	uword_t vendor_specifics3[30];
-	uword_t reserved26[95];
+	uword_t reserved27[95];
 } ATAInfo;
+
+//Port Offsets
+#define ATA_DATA 0
+#define ATA_FEATURES 1
+#define ATA_SECT_COUNT 2
+#define ATA_LBALO 3
+#define ATA_LBAMI 4
+#define ATA_LBAHI 5
+#define ATA_DEVICE_SEL 6
+#define ATA_COMMAND 7
+#define ATA_STATUS_ALT 0x206
+
+//Alternate Names
+#define ATA_INT_REASON ATA_FEATURES
+#define ATA_BYTELO ATA_LBAMI
+#define ATA_BYTEHI ATA_LBAHI
+#define ATA_STATUS ATA_COMMAND
+#define ATA_DEVICE_CONTROL ATA_STATUS_ALT
+
+//ATA Commands
+    
+//SCSI/ATAPI Commands
+#define ATAPI_READ_6 0x08
+#define ATAPI_READ_10 0x28
+#define ATAPI_READ_12 0xA8
+#define ATAPI_READ_16 0x88
+#define ATAPI_WRITE_6 0x0A
+#define ATAPI_WRITE_10 0x2A
+#define ATAPI_WRITE_12 0xAA
+#define ATAPI_WRITE_16 0x8A
+
+inline ubyte_t atapi_getCommandType(ubyte_t command) {
+    if(command == ATAPI_READ_6 || command == ATAPI_READ_10 || command == ATAPI_READ_12 || command == ATAPI_READ_16) return ATA_COMMAND_TYPE_READ;
+    if(command == ATAPI_WRITE_6 || command == ATAPI_WRITE_10 || command == ATAPI_WRITE_12 || command == ATAPI_WRITE_16) return ATA_COMMAND_TYPE_WRITE;
+    return ATA_COMMAND_TYPE_MISC;
+}
 
 void ata_init();
 

@@ -69,7 +69,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     {
         vmm_init();
         logNorm("Initializing PMM\n");
-        pmm_init(mem_size, (((udword_t)&kernel_end & 0xFFFFF000) + 0x2000 + (sizeof(MemoryRegion)*mem_pages)) & ~(0xFFF));
+        pmm_init(mem_size, (((udword_t)&kernel_end & 0xFFFFF000) + 0x3000 + (sizeof(MemoryRegion)*mem_pages)) & ~(0xFFF));
     }
     else kpanic("wut");
 
@@ -143,31 +143,42 @@ void kmain()
     printf(")\n");
     while(keyboard_readKey()) asm("pause");
     
-    printf("\nWritting to disk...\nData before write: \n");
+    uword_t* sect = kmalloc(1024*16);
     
-    uword_t* sect = kmalloc(256*256*16);
-    ata_readSectors(ATA_DEVICE_2, 0, 0, sect);
-    for(uword_t i = 0; i < 256*256; i++)
-    {
-        printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
+    for(ubyte_t device = 0; device < 4; device++) {
+    	printf("\nWritting to disk %x...\nData before write: \n", device);
+    	memset(sect, 0, 1024*16);
+    	
+    	ata_readSectors(device, 0x00, 1, sect);
+    	
+    	if(sect[0] == 0) continue;
+    	
+    	for(uword_t i = 0; i < 1024 && sect[0] != 0; i++)
+   		{
+    	    printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
+    	}
+    	
+    	memset(sect, 'A', 1024*16);
+    	sect[1023] = 0x2100 | 'H';
+    	sect[255] = 0x2100 | 'H';
+    	ata_writeSectors(ATA_DEVICE_2, 0, 0, sect);
+    	
+    	printf("\nReading from disk...\n");
+    	memset(sect, 0x00, 1024*16);
+    	ata_readSectors(device, 0x00, 1, sect);
+    	for(uword_t i = 0; i < 1024 && sect[0] != 0; i++)
+    	{
+    	    printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
+    	}
+    	printf("\n");
     }
-    
-    memset(sect, 'A', 256*256*16);
-    sect[(256*256)-1] = 0x2100 | 'H';
-    ata_writeSectors(ATA_DEVICE_2, 0, 0, sect);
-    
-    printf("\nReading from disk...\n");
-    memset(sect, 0, 256*256*16);
-    ata_readSectors(ATA_DEVICE_2, 0, 0, sect);
-    for(uword_t i = 0; i < 256*256; i++)
-    {
-        printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
-    }
-    printf("\n");
     kfree(sect);
     
+    printf("\n\nwoosh\n\n");
+    printf("The PMM Test doesn't work without the above two lines (including this one)");
+    
     ubyte_t last_state = 0;
-
+	
     while(1)
     {
 	    ubyte_t new_char = keyboard_readKey();

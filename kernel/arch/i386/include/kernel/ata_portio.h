@@ -16,10 +16,10 @@
  */
 
 /* 
- * File:   atapio.h
+ * File:   ata_portio.h
  * Author: DropDemBits
  * 
- * Macros for PIO communication
+ * Macros for IO ports
  * Created on March 16, 2017, 3:28 PM
  */
 
@@ -28,14 +28,9 @@
 
 #define ATA_IO_BASE_0 0x1F0
 #define ATA_IO_BASE_1 0x170
-#define ATA_IO_BASE_2 0x1F0
-#define ATA_IO_BASE_3 0x170
 
 #define ATA_IO_CTRL_STAT_0 0x3F6
 #define ATA_IO_CTRL_STAT_1 0x376
-#define ATA_IO_CTRL_STAT_2 0x3F6
-#define ATA_IO_CTRL_STAT_3 0x376
-
 
 #endif /* _ATAPIO_H */
 

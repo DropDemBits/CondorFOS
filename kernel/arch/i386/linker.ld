@@ -32,10 +32,11 @@ SECTIONS
 		*(.bss)
 		*(.bootstrap_stack)
 	}
-        /DISCARD/ : {
-            *(.comment)
-            *(.eh_frame)
-        }
+    
+    /DISCARD/ : {
+        *(.comment)
+        *(.eh_frame)
+    }
 }
 
 kernel_end = .;

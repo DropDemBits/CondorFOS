@@ -20,6 +20,8 @@
 #define KERNEL_TYPE_RC 2
 #define KERNEL_TYPE_RELEASE 3
 
+#define LENGTH_OF(x) (sizeof(x) / sizeof(x[0]))
+
 //Typedefs
 
 //Unsigned types
@@ -44,6 +46,7 @@ typedef   signed char char_t;
 
 extern udword_t KERNEL_VIRTUAL_BASE;
 #define KERNEL_BASE (udword_t)&KERNEL_VIRTUAL_BASE
+#define PMM_BASE 0xC8000000
 
 /* Utilities */
 void kexit(int status);
