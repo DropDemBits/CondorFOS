@@ -33,6 +33,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     }
     
     printf("Kernel (Start: %lx, End: %lx)\n", &kernel_start, &kernel_end);
+    //asm("xchg %bx, %bx");
     
     int mem_pages = 1;
     uqword_t mem_size = 0;
@@ -111,7 +112,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     physical_addr_t* paddr2 = pmalloc();
     map_address(laddr, paddr2, 0x3);
     printf(", PADDR2 %#lx, AT ADDR: %#lx\n", paddr2, *laddr);
-    if(paddr1 != paddr2 || *laddr != 0xB00FBEEF) kpanic("PMM Test failed");
+    if(paddr1 != paddr2 || *laddr != 0x00000000) kpanic("PMM Test failed");
     unmap_address(laddr);
 
     //Initialization done, Enable interrupts
@@ -154,7 +155,7 @@ void kmain()
     	
     	if(sect[0] == 0) continue;
     	
-    	for(uword_t i = 0; i < 1024 && sect[0] != 0; i++)
+    	for(uword_t i = 0; i < 1024 && sect[i] != 0; i++)
    		{
     	    printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
     	}
@@ -162,12 +163,12 @@ void kmain()
     	memset(sect, 'A', 1024*16);
     	sect[1023] = 0x2100 | 'H';
     	sect[255] = 0x2100 | 'H';
-    	ata_writeSectors(ATA_DEVICE_2, 0, 0, sect);
+    	ata_writeSectors(device, 0x00, 1, sect);
     	
     	printf("\nReading from disk...\n");
     	memset(sect, 0x00, 1024*16);
     	ata_readSectors(device, 0x00, 1, sect);
-    	for(uword_t i = 0; i < 1024 && sect[0] != 0; i++)
+    	for(uword_t i = 0; i < 1024 && sect[i] != 0; i++)
     	{
     	    printf("%c%c", sect[i] & 0xFF, (sect[i] >> 8) & 0xFF);
     	}

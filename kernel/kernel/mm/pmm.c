@@ -39,11 +39,15 @@ static void stack_pushAddr(physical_addr_t addr)
 {
     if((addr == 0 && is_pmm_init) || addr == (physical_addr_t) stack_base) return;    
     if(!pmm_isInited() && addr >= stackpage_base && addr <= stackpage_limit) return;
+    
     if(stack_offset >= ADDR_PER_BLOCK)
     {
         if(!pmm_isInited())
         {
             stack_base = (physical_addr_t*) stack_base+0x400;
+            
+            if(get_physical((linear_addr_t*)stack_base) == 0) kpanic("yee");
+            
             stack_offset = 0;
             stack_base[stack_offset++] = (physical_addr_t) stack_base-0x400;
             stack_base[stack_offset++] = addr;
@@ -89,7 +93,7 @@ void pmm_setRegionBase(physical_addr_t region_base)
     regions_base = (MemoryRegion*) region_base;
 }
 
-void pmm_init(size_t memory_size, physical_addr_t memory_base)
+void pmm_init(size_t memory_size, linear_addr_t memory_base)
 {
     memory_size &= ~(BLOCK_SIZE-1);
     
@@ -101,15 +105,16 @@ void pmm_init(size_t memory_size, physical_addr_t memory_base)
         stackpage_limit += 0x2000;
     }
         
-    stack_base = (physical_addr_t*)memory_base;
+    stack_base = (linear_addr_t*)memory_base;
     
     stack_limit = stack_base;
     
     //Load pages for PMM
     for(physical_addr_t start = stackpage_base; start < stackpage_limit; start += 0x1000)
     {
-        map_address((linear_addr_t*)start, (physical_addr_t*)(start - (physical_addr_t)&KERNEL_VIRTUAL_BASE), 0x3);
+        map_address((linear_addr_t*)(start | KERNEL_BASE), (physical_addr_t*)(start - (physical_addr_t)&KERNEL_VIRTUAL_BASE), 0x3);
     }
+    
     *stack_base = 0;
     
     for(physical_addr_t addr = memory_size - BLOCK_SIZE; addr > 0; addr -= BLOCK_SIZE)

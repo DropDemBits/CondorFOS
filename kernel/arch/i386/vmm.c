@@ -42,7 +42,9 @@ static ubyte_t smap_page(linear_addr_t* laddr, physical_addr_t* paddr, uword_t f
     if(!(PAGE_DIRECTORY[pd_index] & PAGE_PRESENT))
     {
         PAGE_DIRECTORY[pd_index] = (physical_addr_t)pmalloc() | 0x00000003;
-        memset((linear_addr_t*)(PAGE_DIRECTORY[pd_index] & (~0xFFF)), 0, 4096);
+        
+        flush_tlb(laddr);
+        memset((linear_addr_t*)((linear_addr_t)(PAGE_TABLE_BASE+pt_index) & (~0xFFF)), 0, 4096);
         flush_tlb(laddr);
     }
     if(PAGE_TABLE_BASE[pt_index] & PAGE_PRESENT)
@@ -51,6 +53,7 @@ static ubyte_t smap_page(linear_addr_t* laddr, physical_addr_t* paddr, uword_t f
     PAGE_TABLE_BASE[pt_index] = ((physical_addr_t)paddr & PAGE_ADDR_MASK) | (flags & PAGE_FLAG_MASK);
     
     flush_tlb(laddr);
+    memset(laddr, 0, 4096);
     return 0;
 }
 
