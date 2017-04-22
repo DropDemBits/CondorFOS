@@ -43,7 +43,8 @@ static void detectDevice(int device)
     udword_t watch_dog = 0;
     ubyte_t byte0 = 0;
     ubyte_t byte1 = 0;
-    
+    ubyte_t byte0_store = 0;    
+
     ps2_sendDataTo(device, 0xF5);
     ps2_sendDataTo(device, 0xF2);
     while(!(inb(PS2_STT_CMD) & 0x01)) asm("pause");
@@ -54,7 +55,7 @@ static void detectDevice(int device)
         watch_dog++;
         asm("pause");
     }
-    byte0 = ps2_readDataFrom(device);
+    byte0_store = ps2_readDataFrom(device);
     watch_dog = 0;
     
     while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF)
@@ -62,7 +63,10 @@ static void detectDevice(int device)
         watch_dog++;
         asm("pause");
     }
-    if(ps2_readDataFrom(device) != byte0) byte0 = ps2_readDataFrom(device);
+    byte0 = ps2_readDataFrom(device);
+    
+    if(byte0_store != byte0 && byte0_store != 0xfa) byte0 = byte0_store;
+    
     watch_dog = 0;
     while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF)
     {
@@ -70,6 +74,8 @@ static void detectDevice(int device)
         asm("pause");
     }
     byte1 = ps2_readDataFrom(device);
+    
+    while(inb(PS2_STT_CMD) & 0x1) inb(PS2_DATA);
     
     if(byte0 == 0x00 && byte1 == 0x00) devType[device] = DEV_TYPE_PS2_MOUSE;
     else if(byte0 == 0x03 && byte1 == 0x03) devType[device] = DEV_TYPE_MOUSE_SCR;
