@@ -1,15 +1,14 @@
 #include <stdio.h>
-#ifdef __LIBK_BUILD
-//extern void kputchar(const char c);
-#include <condor.h>
+#if __STDC_HOSTED__ == 0
+extern void kputchar(int ic);
 #endif
 
 int putchar(int ic)
 {
-    #ifdef __LIBK_BUILD
-        kputchar(ic);
-    #else
-        //Put into iostream
-    #endif
+#if __STDC_HOSTED__ == 1
+    //TODO: Make write to STDOUT
+#else
+    kputchar(ic);
+#endif
     return ic;
 }

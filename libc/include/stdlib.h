@@ -1,5 +1,9 @@
 #include <__commons.h>
 
+#if __STDC_HOSTED__ == 1
+#error Hosted libc not available
+#endif
+
 #ifndef STDLIB_H
 #define STDLIB_H
 

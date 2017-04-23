@@ -5,10 +5,10 @@ DESTDIR?=
 PREFIX?=/usr/local
 
 OBJ=
-CFLAGS=-Wall -Wextra -ffreestanding
-CPPFLAGS=-D__LIBC_BUILD -I$(DESTDIR)$(PREFIX)/include
+CFLAGS=-Wall -Wextra
+CPPFLAGS= -I$(DESTDIR)$(PREFIX)/include
 LIBK_CFLAGS=$(CFLAGS) -ffreestanding -fbuiltin
-LIBK_CPPFLAGS=$(CPPFLAGS) -D__LIBK_BUILD -Iinclude
+LIBK_CPPFLAGS=$(CPPFLAGS) -Iinclude
 
 include ./arch/$(TARGET_ARCH)/make.config
 

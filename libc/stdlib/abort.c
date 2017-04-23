@@ -1,18 +1,17 @@
 #include <stdlib.h>
-#ifdef __LIBK_BUILD
-//extern void kpanic(const char* message);
-#include <condor.h>
+#if __STDC_HOSTED__ == 0
+void kpanic(const char* message);
 #endif
 
 __attribute__((__noreturn__))
 void abort(void)
 {
-    #ifdef __LIBK_BUILD
-        //Panic
-        kpanic("Abnormal exit");
-    #else
-        //Abnormal app exit
-    #endif
+#if __STDC_HOSTED__ == 1
+    //TODO: Call exit with suitable errno
+#else
+    //Panic
+    kpanic("Abnormal exit");
     while(1) asm("hlt");
+#endif    
     __builtin_unreachable();
 }
