@@ -29,11 +29,11 @@ ubyte_t hasDEV2 = 0;
 static ubyte_t waitACK(void)
 {
     //Wait for it...
-    while(!(inb(PS2_STT_CMD) ^ 0x01)) asm("pause");
-
-    //Check for both 0xAA and 0xFA
+    while(!(inb(PS2_STT_CMD) & 0x1)) asm("pause");
+    inb(PS2_STT_CMD);
+    //Check for both 0xAA and ACK
     ubyte_t in = inb(PS2_DATA);
-    if(in != 0xAA || in != 0xFA) return 1;
+    if(in != 0xAA && in != PS2_ACK) return 1;
     if(in == 0xAA) inb(PS2_DATA);
     return 0;
 }
@@ -43,33 +43,28 @@ static void detectDevice(int device)
     udword_t watch_dog = 0;
     ubyte_t byte0 = 0;
     ubyte_t byte1 = 0;
-    ubyte_t byte0_store = 0;    
-
+    ubyte_t byte0_store = 0;
+    
     ps2_sendDataTo(device, 0xF5);
     ps2_sendDataTo(device, 0xF2);
-    while(!(inb(PS2_STT_CMD) & 0x01)) asm("pause");
-    inb(PS2_DATA);
     
-    while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF)
-    {
+    while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF) {
         watch_dog++;
         asm("pause");
     }
     byte0_store = ps2_readDataFrom(device);
     watch_dog = 0;
     
-    while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF)
-    {
+    while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF) {
         watch_dog++;
         asm("pause");
     }
     byte0 = ps2_readDataFrom(device);
     
-    if(byte0_store != byte0 && byte0_store != 0xfa) byte0 = byte0_store;
+    if(byte0_store != byte0 && byte0_store != PS2_ACK) byte0 = byte0_store;
     
     watch_dog = 0;
-    while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF)
-    {
+    while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF) {
         watch_dog++;
         asm("pause");
     }
@@ -83,9 +78,8 @@ static void detectDevice(int device)
     else if(byte0 == 0xAB && byte1 == 0xC1) devType[device] = DEV_TYPE_MF2KBD_TRANS;
     else if(byte0 == 0xAB && byte1 == 0x41) devType[device] = DEV_TYPE_MF2KBD_TRANS;
     else if(byte0 == 0xAB && byte1 == 0x83) devType[device] = DEV_TYPE_MF2KBD;
-    else if(byte0 == 0xFA && byte1 == 0xFA) devType[device] = DEV_TYPE_ATKBD_TRANS;
-    else
-    {
+    else if(byte0 == PS2_ACK && byte1 == PS2_ACK) devType[device] = DEV_TYPE_ATKBD_TRANS;
+    else {
         printf("Unknown Response: %x, %x\n", byte0, byte1);
         devType[device] = DEV_TYPE_UNKNOWN;
     }
@@ -122,31 +116,26 @@ ubyte_t ps2_init(void)
     outb(PS2_STT_CMD, 0xAA);
     while(!(inb(PS2_STT_CMD) ^ 0x01)) asm("pause");
     test_resp = inb(PS2_DATA);
-    if(test_resp != 0x55)
-    {
+    if(test_resp != 0x55) {
         if(test_resp == 0xFC) return RET_FAIL;
-        else
-        {
+        else {
             //Some undocumented response, report it
-            printf("%#x\n");
-            kpanic("Unknown response");
+            printf("%#x\n", test_resp);
+            return RET_FAIL | RET_NODEV;
         }
     }
 
     //Double check if this is actually a dual port controller
-    if(hasDEV2)
-    {
-        //Enable 2nd port, then read
+    if(hasDEV2) {
+        //Enable 2nd port, then read config byte
         outb(PS2_STT_CMD, 0xA8);
         outb(PS2_STT_CMD, 0x20);
         config = inb(PS2_DATA);
-        if(config & 0x20) outb(PS2_STT_CMD, 0xA7);
-        else
-        {
-            //No 2nd port, disable and clear hasDEV2
-            outb(PS2_STT_CMD, 0xA7);
+        if((config & 0x20) == 0) {
+            //No 2nd port, clear hasDEV2
             hasDEV2 = 0;
         }
+        outb(PS2_STT_CMD, 0xA7);
     }
 
     //Test ports
@@ -156,12 +145,10 @@ ubyte_t ps2_init(void)
     check_resp = inb(PS2_DATA);
     if(check_resp != 0) usable_channels &= ~0x01;
 
-    if(hasDEV2)
-    {
+    if(hasDEV2) {
         outb(PS2_STT_CMD, 0xA9);
         check_resp = inb(PS2_DATA);
-        if(check_resp != 0)
-        {
+        if(check_resp != 0) {
             usable_channels &= ~0x02;
             hasDEV2 = 0;
         } else hasDEV2 = 1;
@@ -172,32 +159,49 @@ ubyte_t ps2_init(void)
     //Enable and reset devices
     outb(PS2_STT_CMD, 0x20);
     config = inb(PS2_DATA);
+    
     //Port1
-    if(usable_channels & 0x1)
-    {
+    if(usable_channels & 0x1) {
         outb(PS2_STT_CMD, 0xAE);
         outb(PS2_DATA, 0xFF);
-        if(!waitACK()) usable_channels &= ~0x01;
-        config |= 0x01;
+        if(waitACK()) usable_channels &= ~0x01;
+        else config |= 0x01;
     }
 
     //Port2
-    if(usable_channels & 0x2)
-    {
+    if(usable_channels & 0x2) {
         outb(PS2_STT_CMD, 0xA8);
         outb(PS2_STT_CMD, 0xD4);
         outb(PS2_DATA, 0xFF);
-        if(!waitACK()) usable_channels &= ~0x02;
+        if(waitACK()) usable_channels &= ~0x02;
         else config |= 0x02;
     }
-
+    
     if(!usable_channels) return RET_FAIL | RET_NODEV;
-
-    outb(PS2_STT_CMD, 0x60);
-    outb(PS2_DATA, config);
 
     detectDevice(DEV1);
     if(hasDEV2) detectDevice(DEV2);
+    
+    if(devType[DEV1] == DEV_INV) {
+        config &= ~0x01;
+    } 
+    else {
+        config &= ~0x10;
+    }
+    
+    if(devType[DEV2] == DEV_INV) {
+        config &= ~0x02;
+    } else {
+        config &= ~0x20;
+    }
+    
+    outb(PS2_STT_CMD, 0x60);
+    outb(PS2_DATA, config);
+    
+    outb(PS2_STT_CMD, 0x20);
+    printf("PS/2 INFO: (DEVICE1: %d, ", devType[DEV1]);
+    printf("DEVICE2: %d, ", devType[DEV2]);
+    printf("CONFIG: %#x), ", inb(PS2_DATA));
     
     ps2_clearBuffer();
     return RET_SUCCESS;
@@ -205,8 +209,7 @@ ubyte_t ps2_init(void)
 
 void ps2_handleDevice(int device, uqword_t func)
 {
-    if(device == DEV2)
-    {
+    if(device == DEV2) {
         if(!hasDEV2 || device == DEV_INV) return;
         idt_addISR(IRQ12, func);
     }
@@ -217,8 +220,7 @@ int ps2_sendDataTo(int device, ubyte_t data)
 {
     if((device == DEV2 && !hasDEV2) || device == DEV_INV) return 2;
     uword_t watch_dog = 0;
-    while((inb(PS2_STT_CMD) & 0x2))
-    {
+    while((inb(PS2_STT_CMD) & 0x2)) {
         watch_dog++;
         if(watch_dog > 1000) break;
     }
@@ -265,8 +267,7 @@ static int getMouseDev()
 
 int ps2_getDevHID(int hid)
 {
-    switch(hid)
-    {
+    switch(hid) {
         case HID_KEYBOARD: return getKeyboardDev();
         case HID_MOUSE: return getMouseDev();
         default: return DEV_INV;

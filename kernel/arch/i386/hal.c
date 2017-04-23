@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <kernel/hal.h>
 
 #include <kernel/pic.h>
@@ -102,7 +103,7 @@ void timer_tsleep(udword_t ticks)
 
 void hal_initController()
 {
-    ps2_init();
+    printf("RET: %x\n", ps2_init());
 }
 
 void controller_handleDevice(int device, uqword_t func)

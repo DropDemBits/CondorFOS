@@ -70,20 +70,20 @@
 #define KEY_DOT        62
 #define KEY_SLASH      63
 #define KEY_LBRACE     64
-
 #define KEY_BACKSPACE  65
-#define KEY_CAPS_LOCK  66
-#define KEY_LSHIFT     67
-#define KEY_LCTRL      68
-#define KEY_LGUI       69
-#define KEY_LALT       70
-#define KEY_RSHIFT     71
-#define KEY_RCTRL      72
-#define KEY_RGUI       73
-#define KEY_RALT       74
-#define KEY_APPS       75
-#define KEY_ENTER      76
-#define KEY_KP_ENTER   77
+#define KEY_ENTER      66
+#define KEY_KP_ENTER   67
+
+#define KEY_CAPS_LOCK  68
+#define KEY_LSHIFT     69
+#define KEY_LCTRL      70
+#define KEY_LGUI       71
+#define KEY_LALT       72
+#define KEY_RSHIFT     73
+#define KEY_RCTRL      74
+#define KEY_RGUI       75
+#define KEY_RALT       76
+#define KEY_APPS       77
 #define KEY_ESCAPE     78
 #define KEY_F1         79
 #define KEY_F2         80
@@ -136,7 +136,7 @@
 #define KEY_WWW_FAV    125
 #define LAST_KEY       KEY_WWW_FAV
 
-#define IS_PRINTABLE_KEY(x) (x<=KEY_LBRACE&&x>KEY_NONE)
+#define IS_PRINTABLE_KEY(x) (x<=KEY_KP_ENTER&&x>KEY_NONE)
 #define IS_ALPHA_KEY(x) (x<=KEY_Z&&x>KEY_NONE)
 
 //Key states
