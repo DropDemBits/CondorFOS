@@ -22,6 +22,8 @@
 #include <kernel/vmm.h>
 #include <condor.h>
 
+#include "kernel/stack_state.h"
+
 extern udword_t readCR2();
 extern void switchPageBase();
 extern udword_t stack_bottom;
@@ -74,15 +76,15 @@ static physical_addr_t* sumap_page(linear_addr_t* laddr)
     return retAddr;
 }
 
-static void pf_handler(udword_t* esp)
+static void pf_handler(stack_state_t* state)
 {
-    if(!(*(esp+13) & (PAGE_PRESENT | PAGE_USER))) {
-        if(pmm_isInited())
+    if(!(state->err_code & (PAGE_PRESENT | PAGE_USER))) {
+        if(pmm_isInited()) {
             smap_page((linear_addr_t*)readCR2(), pmalloc(), PAGE_PRESENT | PAGE_RW);
-        else
-        {
-            kdump_useStack((uqword_t*)esp);
-            printf("ERR: %#lx\n", *(esp+13));
+        }
+        else {
+            kdump_useStack(state);
+            printf("ERR: %#lx\n", state->err_code);
             kpanic("PF Before PMM was initialized");
         }
     }
@@ -117,6 +119,12 @@ void vmm_init()
     idt_addISR(14, (udword_t)pf_handler);
 }
 
+void vmm_switchPageBase(udword_t page_directory_base)
+{
+    asm("movl %0, %%eax\n\t" :: "m"(page_directory_base));
+    switchPageBase();
+}
+
 // TODO: Decide whether to section off this region into another file...
 /*static udword_t big_bitmap[32];
 static udword_t individual_bitmap[32768];
@@ -140,9 +148,4 @@ void freeAddrs(void* addr, size_t length)
 {
     
 }
-
-void switchPageBase(udword_t pageAddr)
-{
-    asm("movl %%0, %eax\n\t" :: "m"(pageAddr));
-    switchPageBase();
-}*/
+*/

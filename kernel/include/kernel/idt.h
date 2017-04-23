@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <kernel/stack_state.h>
 
 #ifndef _IDT_H
 #define _IDT_H
@@ -31,24 +32,6 @@
 #define IRQ13 IRQ0+13
 #define IRQ14 IRQ0+14
 #define IRQ15 IRQ0+15
-
-// ISR Stack State
-typedef struct
-{
-    uint32_t edi;
-    uint32_t esi;
-    uint32_t ebp;
-    uint32_t esp;
-    uint32_t edx;
-    uint32_t ecx;
-    uint32_t ebx;
-    uint32_t eax;
-    uint32_t int_num;
-    uint32_t err_code;
-    uint32_t eip;
-    uint32_t cs;
-    uint32_t eflags;
-} stack_state_t;
 
 /**
  * Adds an ISR handler

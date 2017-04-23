@@ -94,63 +94,56 @@ static char* predefMSGS[] = {
 };
 static uint32_t* descriptors;
 
-static void default_div0_isr(uint32_t* esp)
+static void default_div0_isr(stack_state_t* state)
 {
     //Increment eip by two bytes to skip over div instruction
-    *(esp+14) += 2;
+    state->eip += 2;
     return;
 }
 
-static void default_int3_isr(uint32_t* esp)
+static void default_int3_isr(stack_state_t* state)
 {
     //Just return, nothing special
-    *(esp+14) += 2;
+    state->eip += 2;
     return;
 }
 
-void isr_handler(uint32_t* esp)
+void isr_handler(stack_state_t* state)
 {
-    uint32_t int_num =  *(esp+12) & 0xFF;
-    uint32_t err_code = *(esp+13);
     
-    if(!isrs[*(esp+12)]) {
-        if(int_num > 31) int_num = 32;
+    if(!isrs[state->int_num]) {
+        if(state->int_num > 31) state->int_num = 31;
         
-        if(pmm_isInited()) kdump_useStack((uqword_t*)esp);
-        printf("ERR: %#x\n", err_code);
+        if(pmm_isInited()) kdump_useStack(state);
+        printf("ERR: %#x\n", state->err_code);
         
-        kpanic(predefMSGS[*(esp+12)]);
+        kpanic(predefMSGS[state->int_num]);
     } else
     {
-        void (*handler)(uint32_t*);
-        if(isrs[int_num]) {
-            handler = (void*) isrs[int_num];
-            handler(esp);
+        void (*handler)(stack_state_t*);
+        if(isrs[state->int_num]) {
+            handler = (void*) isrs[state->int_num];
+            handler(state);
         }
     }
 }
 
-void irq_handler(uint32_t* esp)
+void irq_handler(stack_state_t* state)
 {
-    uint16_t int_num = *(esp+12) & 0xFFFF;
-    
-    void (*handler)(uint32_t*);
-    if(isrs[int_num]) {
-        handler = (void*) isrs[int_num];
-        handler(esp);
+    void (*handler)(stack_state_t*);
+    if(isrs[state->int_num]) {
+        handler = (void*) isrs[state->int_num];
+        handler(state);
     }
-    ic_ack(int_num-32);
+    ic_ack(state->int_num-32);
 }
 
-void trap_handler(uint32_t* esp)
+void trap_handler(stack_state_t* state)
 {
-    //TODO: Figure out int number offset in stack
-    uint16_t int_num = *(esp+12) & 0xFFFF;
-
-    void (*handler)(uint32_t*);
-    if(isrs[int_num]) {
-        handler = (void*) isrs[int_num];
-        handler(esp);
+    void (*handler)(stack_state_t*);
+    if(isrs[state->int_num]) {
+        handler = (void*) isrs[state->int_num];
+        handler(state);
     }
 }
 

@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdlib.h>
+#include <kernel/stack_state.h>
 #include <kernel/liballoc.h>
 
 #ifndef _CONDOR_H
@@ -52,7 +53,7 @@ extern udword_t KERNEL_VIRTUAL_BASE;
 void kexit(int status);
 void kpanic(const char* message);
 void kputchar(const char c);
-void kdump_useStack(uqword_t* esp);
+void kdump_useStack(stack_state_t* esp);
 void kdump_useRegs(uqword_t eip);
 void kdumpStack(uqword_t* esp, udword_t ebp);
 void itoa(qword_t number, char* str, int radix);

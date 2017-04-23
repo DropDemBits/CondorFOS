@@ -21,6 +21,7 @@
 #include <io.h>
 #include <stdio.h>
 
+#include <kernel/stack_state.h>
 #include <kernel/tty.h>
 #include <kernel/klogger.h>
 
@@ -105,94 +106,75 @@ void kputchar(const char c)
     terminal_putchar(c);
 }
 
-void kdump_useStack(uqword_t* rsp)
+void kdump_useStack(stack_state_t* state)
 {
-    udword_t* esp = (udword_t*)rsp;
+    udword_t* esp = (udword_t*)state;
     
-    kdumpStack((uqword_t*)esp, (udword_t)&stack_top);
-    
-    //Registers
-    uint16_t cs =     *(esp+15) & 0xFFFF;
-    uint16_t ds =     *(esp+ 3) & 0xFFFF;
-    uint16_t es =     *(esp+ 2) & 0xFFFF;
-    uint16_t fs =     *(esp+ 1) & 0xFFFF;
-    uint16_t gs =     *(esp+ 0) & 0xFFFF;
-    uint32_t eflags = *(esp+16) & 0xFFFF;
-    uint32_t eip =    *(esp+14);
-    uint32_t eax =    *(esp+11);
-    uint32_t ebx =    *(esp+8);
-    uint32_t ecx =    *(esp+10);
-    uint32_t edx =    *(esp+9);
-    uint32_t esp_now = 0;
-    uint32_t ebp =    *(esp+6);
-    uint32_t esi =    *(esp+5);
-    uint32_t edi =    *(esp+4);
-    
-    asm("movl %%esp, %0" : "=m"(esp_now) :: "memory");
+    kdumpStack((uqword_t*)state, (udword_t)&stack_top);
     
     //Dump Registers:
     printf("BEGIN DUMP:\n");
-    printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n", eax, ebx, ecx, edx);
-    printf("ESP: %#lx, EBP: %#lx, ESI: %#lx, EDI: %#lx\n", esp_now, ebp, esi, edi);
+    printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n", state->eax, state->ebx, state->ecx, state->edx);
+    printf("ESP: %#lx, EBP: %#lx, ESI: %#lx, EDI: %#lx\n", (udword_t)esp-sizeof(stack_state_t), state->ebp, state->esi, state->edi);
     printf("SEGMENT REGS: VALUE (INDEX|TABLE|RPL)\n");
-    printf("CS: %x (%d|%s|%d)\n", cs, cs >> 4, getTable(cs), cs & 0x2);
-    printf("DS: %x (%d|%s|%d)\n", ds, ds >> 4, getTable(ds), ds & 0x2);
-    printf("ES: %x (%d|%s|%d)\n", es, es >> 4, getTable(es), es & 0x2);
-    printf("FS: %x (%d|%s|%d)\n", fs, fs >> 4, getTable(fs), fs & 0x2);
-    printf("GS: %x (%d|%s|%d)\n", gs, gs >> 4, getTable(gs), gs & 0x2);
-    printf("EFLAGS: %#lx\n", eflags);
-    printf("EIP: %#lx\n", eip);
+    printf("CS: %x (%d|%s|%d)\n", state->cs, state->cs >> 4, getTable(state->cs), state->cs & 0x2);
+    printf("DS: %x (%d|%s|%d)\n", state->ds, state->ds >> 4, getTable(state->ds), state->ds & 0x2);
+    printf("ES: %x (%d|%s|%d)\n", state->es, state->es >> 4, getTable(state->es), state->es & 0x2);
+    printf("FS: %x (%d|%s|%d)\n", state->fs, state->fs >> 4, getTable(state->fs), state->fs & 0x2);
+    printf("GS: %x (%d|%s|%d)\n", state->gs, state->gs >> 4, getTable(state->gs), state->gs & 0x2);
+    printf("EFLAGS: %#lx\n", state->eflags);
+    printf("EIP: %#lx\n", state->eip);
     printf("CR0: %lx, CR2: %lx, CR3: %lx, CR4: %lx\n", readCR0(), readCR2(), readCR3(), readCR4());
     //Dump Registers to serial
     char buffer[65];
     //GPRs
     serial_writes(COM1, "\nBEGIN DUMP\nREGS: EAX: 0x");
-    itoa(eax, buffer, 16);
+    itoa(state->eax, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, " EBX: 0x");
-    itoa(ebx, buffer, 16);
+    itoa(state->ebx, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, " ECX: 0x");
-    itoa(ecx, buffer, 16);
+    itoa(state->ecx, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, " EDX: 0x");
-    itoa(edx, buffer, 16);
+    itoa(state->edx, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nESP: 0x");
-    itoa(esp_now, buffer, 16);
+    itoa((udword_t)esp-sizeof(stack_state_t), buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, " EBP: 0x");
-    itoa(ebp, buffer, 16);
+    itoa(state->ebp, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, " ESI: 0x");
-    itoa(esi, buffer, 16);
+    itoa(state->esi, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, " EDI: 0x");
-    itoa(edi, buffer, 16);
+    itoa(state->edi, buffer, 16);
     serial_writes(COM1, buffer);
     
     //Segment registers
     serial_writes(COM1, "SREGS:\nCS: ");
-    itoa(cs, buffer, 16);
+    itoa(state->cs, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nDS: ");
-    itoa(ds, buffer, 16);
+    itoa(state->ds, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nES: ");
-    itoa(es, buffer, 16);
+    itoa(state->es, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nFS: ");
-    itoa(fs, buffer, 16);
+    itoa(state->fs, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nGS: ");
-    itoa(gs, buffer, 16);
+    itoa(state->gs, buffer, 16);
     serial_writes(COM1, buffer);
     
     serial_writes(COM1, "\nEFLAGS: 0x");
-    itoa(eflags, buffer, 16);
+    itoa(state->eflags, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nEIP: 0x");
-    itoa(eip, buffer, 16);
+    itoa(state->eip, buffer, 16);
     serial_writes(COM1, buffer);
     
     //Control Registers

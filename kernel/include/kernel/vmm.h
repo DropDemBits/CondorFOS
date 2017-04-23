@@ -64,12 +64,16 @@ physical_addr_t* get_physical(linear_addr_t* laddr);
  */
 void vmm_init(void);
 
+/**                                                                                                                                    
+ * Switches the PD Pointer to the specified PD                                                                                         
+ * @param page_directory_base The PD to point to                                                                                       
+ */                                                                                                                                    
+void vmm_switchPageBase(udword_t page_directory_base); 
+
 /* For later
 linear_addr_t* allocAddrs(size_t length);
 
 void freeAddrs(void* addr, size_t length);
-
-void switchPageBase(udword_t pageAddr);
 */
 
 #endif /* _VMM_H */
