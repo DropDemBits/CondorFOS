@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <kernel/stack_state.h>
 #include <kernel/liballoc.h>
 
@@ -47,7 +48,6 @@ typedef   signed char char_t;
 
 extern udword_t KERNEL_VIRTUAL_BASE;
 #define KERNEL_BASE (udword_t)&KERNEL_VIRTUAL_BASE
-#define VMM_BASE 0xC8000000
 
 /* Utilities */
 void kexit(int status);
@@ -64,5 +64,7 @@ udword_t* getKernelVersion();
 void* kmemcpy(void* dest, const void* src, size_t num);
 void* kmemmove(void* dest, const void* src, size_t num);
 */
+void* kmemset(void* base, const int c, size_t length);
+
 
 #endif

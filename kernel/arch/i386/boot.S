@@ -45,6 +45,10 @@ tss_start:
 .skip 0x68 # Size of tss
 tss_end:
 
+.global sse2_support
+sse2_support:
+.skip 1
+
 .section .data
 # GDT sections
 gdt_data:
@@ -78,10 +82,6 @@ idtr:
 .align 4096
 
 .section .rodata
-# String store
-str_nosse:
-.long 0x70697072, 0x70727000
-.asciz "Error: CPU does not support SSE and SSE2"
 
 # Main code
 .section .text
@@ -100,7 +100,7 @@ _start:
     cpuid
     
     test $(1<<26), %edx
-    jz .boohoo
+    jz .no_sse
     
     # Go Ahead and setup SSE
     movl %cr0, %eax
@@ -111,7 +111,10 @@ _start:
     movl %cr4, %eax
     orl $0x600, %eax
     movl %eax, %cr4
-
+    
+    movb $0x1, (sse2_support - KERNEL_VIRTUAL_BASE)
+    
+.no_sse:
     # Initialize paging
     
     # Setup registers
@@ -218,14 +221,5 @@ _start:
         cli
 	hlt
 	jmp .hang
-.boohoo:
-    movl $0x0F720F45, (0xb8000)
-    movl $0x0F3A0F72, (0xb8004)
-    movl $0x0C4E0C20, (0xb8008)
-    movl $0x0C200C6F, (0xb800c)
-    movl $0x0C530C53, (0xb8010)
-    movl $0x0C280C45, (0xb8014)
-    movl $0x0C290C32, (0xb8018)
-    jmp .hang
         
 .size _start, . - _start

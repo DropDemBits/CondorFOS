@@ -20,6 +20,7 @@
 #include <serial.h>
 #include <io.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <kernel/stack_state.h>
 #include <kernel/tty.h>
@@ -27,11 +28,14 @@
 
 extern udword_t stack_bottom;
 extern udword_t stack_top;
+extern ubyte_t sse2_support;
 
 extern udword_t readCR0();
 extern udword_t readCR2();
 extern udword_t readCR3();
 extern udword_t readCR4();
+
+//extern void sse_memset(void* base, const int c, size_t length);
 
 //TODO: Make updating this more friendly
 static udword_t version[] = {0, 2, 0, KERNEL_TYPE_ALPHA};
@@ -252,4 +256,12 @@ void kdumpStack(uqword_t* rsp, udword_t ebp)
         serial_writes(COM1, "]\n");
     }
     putchar('\n');
+}
+
+void* kmemset(void* base, const int c, size_t length)
+{
+    if(sse2_support) {
+        return memset(base, c, length);
+    }
+    else return memset(base, c, length);
 }

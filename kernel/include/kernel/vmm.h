@@ -71,11 +71,10 @@ void vmm_init(void);
 void vmm_switchPageBase(udword_t page_directory_base); 
 
 /**
- * Initializes the Virtual Address Allocator
+ * Initializes the Virtual Address Manager
  * 
- * @param vaddm_base The linear address of the bitmaps
  */
-void vaddm_init(linear_addr_t vaddm_base);
+void vaddm_init(void);
 
 /**
  * Sets a region to not be allocated
@@ -99,7 +98,7 @@ void vaddm_clear_region(linear_addr_t base, size_t size);
  * @param addresses The number of addresses to allocate
  * @return The pointer to the beginning to the allocated addresses
  */
-linear_addr_t* vmalloc(size_t addresses);
+linear_addr_t* valloc(size_t addresses);
 
 /**
  * Returns virtual addresses to be reallocated

@@ -6,9 +6,9 @@ SECTIONS
 	/* Load the kernel at 0xC0100000 */
 	. = 0xC0100000;
         
-        kernel_start = .;
+    kernel_start = .;
 	
-        /* Put the multiboot header and code sections at the very beginning of the file */
+    /* Put the multiboot header and code sections at the very beginning of the file */
 	.text ALIGN(4K) : AT(ADDR(.text) - 0xC0000000) {
 		*(.multiboot)
 		*(.text)
@@ -19,7 +19,7 @@ SECTIONS
 		*(.rodata)
 	}
         
-        ro_end = .;
+    ro_end = .;
 
 	/* Read-Write data */
 	.data ALIGN(4K) : AT(ADDR(.data) - 0xC0000000) {

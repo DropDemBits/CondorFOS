@@ -29,15 +29,6 @@
 #define _PMM_H
 
 /**
- * Memory region structure
- */
-typedef struct {
-    physical_addr_t start_addr;
-    physical_addr_t end_addr;
-    uchar_t flags;
-} MemoryRegion;
-
-/**
  * The size of an allocated block
  */
 #define BLOCK_SIZE 0x1000
@@ -50,21 +41,11 @@ typedef struct {
 #define ADDR_PER_BLOCK (BLOCK_SIZE / sizeof(physical_addr_t))-1
 
 /**
- * void pmm_setRegionBase(physical_addr_t region_base)
- *
- * Sets the region base
- * @param region_base The base address of the region structures
- */
-void pmm_setRegionBase(physical_addr_t region_base);
-
-/**
- * void pmm_init(size_t memory_size, size_t bitmap_location);
+ * void pmm_init(void);
  *
  * Initializes the PMM
- * @param memory_size The size of the physical memory
- * @param bitmap_location The destination of the bitmap
  */
-void pmm_init(size_t memory_size, physical_addr_t bitmap_location);
+void pmm_init(void);
 
 /**
  * void pmm_setRegion(physical_addr_t region_start, size_t region_size);
@@ -73,16 +54,16 @@ void pmm_init(size_t memory_size, physical_addr_t bitmap_location);
  * @param region_start The physical address of the region to set
  * @param region_size The size of the region to set
  */
-void pmm_setRegion(physical_addr_t region_start, size_t region_size);
+void pmm_set_region(physical_addr_t region_start, size_t region_size);
 
 /**
- * void pmm_clearRegion(physical_addr_t region_start, size_t region_size);
+ * void pmm_clear_region(physical_addr_t region_start, size_t region_size);
  *
  * Clears a region in the bitmap for allocation
  * @param region_start The physical address of the region to clear
  * @param region_size The size of the region to clear
  */
-void pmm_clearRegion(physical_addr_t region_start, size_t region_size);
+void pmm_clear_region(physical_addr_t region_start, size_t region_size);
 
 /**
  * pmm_isInited(void);
@@ -93,19 +74,21 @@ void pmm_clearRegion(physical_addr_t region_start, size_t region_size);
 ubyte_t pmm_isInited(void);
 
 /**
- * physical_addr_t* pmalloc();
+ * physical_addr_t* pmalloc(size_t num_addresses);
  *
  * Allocates page size blocks
+ * @param num_addresses The number of addresses to allocate
  * @return The address to the allocated block
  */
-physical_addr_t* pmalloc(void);
+physical_addr_t* pmalloc(size_t num_addresses);
 
 /**
- * void pfree(physical_ptr_t address);
+ * void pfree(physical_addr_t* address, size_t num_addresses);
  *
  * Frees an address to be reused
  * @param address The address to free
+ * @param num_addresses The number of addresses that have been allocated
  */
-void pfree(physical_addr_t* address);
+void pfree(physical_addr_t* address, size_t num_addresses);
 
 #endif /** PMM_ H */

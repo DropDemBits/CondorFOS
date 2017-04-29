@@ -68,7 +68,6 @@ typedef struct
     uint32_t es; //52(eax)
     uint32_t fs; //56(eax)
     uint32_t gs; //60(eax)
-    uint32_t cr3; //64(eax)
 } registers_t;
 
 #endif /* STACK_STATE_H */

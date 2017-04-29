@@ -227,7 +227,6 @@ void* atapi_sendCommand(uword_t device, ubyte_t command[], ubyte_t command_lengt
     ubyte_t status = 0;
     
     for(uword_t words = 0; words < word_count && !((status = inb(base+ATA_STATUS_ALT)) & 0x1) && (inb(base+ATA_STATUS_ALT) & 0x08); words++, index++) {
-        //asm("xchg %bx, %bx");
         if(atapi_getCommandType(command[0]) == ATA_COMMAND_TYPE_READ) data[index] = inw(base+ATA_DATA);
         else if(atapi_getCommandType(command[0]) == ATA_COMMAND_TYPE_WRITE) outw(base+ATA_DATA, data[index]);
     }

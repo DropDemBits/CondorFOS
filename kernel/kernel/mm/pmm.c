@@ -17,7 +17,7 @@
 
 /* 
  * pmm.c: Physical memory manager
- * Physical management based on stacks
+ * Physical management based on bitmaps
  */
 
 #include <kernel/pmm.h>
@@ -26,150 +26,119 @@
 #include <string.h>
 #include <stdio.h>
 
-static physical_addr_t* stack_base;
-static physical_addr_t* stack_limit;
-static size_t stack_offset = 1;
-static MemoryRegion* regions_base;
-static uword_t region_indice = 0;
-static ubyte_t is_pmm_init = 0;
-static physical_addr_t stackpage_base = 0;
-static physical_addr_t stackpage_limit = 0;
+#define PMM_BASE 0xC8005000
 
-static void stack_pushAddr(physical_addr_t addr)
-{
-    if((addr == 0 && is_pmm_init) || addr == (physical_addr_t) stack_base) return;    
-    if(!pmm_isInited() && addr >= stackpage_base && addr <= stackpage_limit) return;
+static udword_t* superblock_bitmap;
+static udword_t* block_bitmap;
+static ubyte_t is_inited;
+
+static void paddm_set_bit(udword_t bit) {
+    if(bit > 32768*32) return;
     
-    if(stack_offset >= ADDR_PER_BLOCK)
-    {
-        if(!pmm_isInited())
-        {
-            stack_base = (physical_addr_t*) stack_base+0x400;
-            
-            if(vmm_get_physical_addr((linear_addr_t*)stack_base) == 0) kpanic("yee");
-            
-            stack_offset = 0;
-            stack_base[stack_offset++] = (physical_addr_t) stack_base-0x400;
-            stack_base[stack_offset++] = addr;
-        } else {
-            physical_addr_t prev_stack = (physical_addr_t)stack_base;
-            stack_base = (physical_addr_t*) (addr + KERNEL_BASE);
-            *(stack_base) = prev_stack;
-            stack_offset = 0;
-        }
-    } else
-    {
-        stack_base[stack_offset] = (physical_addr_t) addr;
-        stack_offset++;
-    }
+    block_bitmap[bit / 32] |= (1 << (bit % 32));
+	if(block_bitmap[(bit >> 5) & ~0x1] == 0xFFFFFFFF && block_bitmap[(bit >> 5) | 0x1] == 0xFFFFFFFF)
+        superblock_bitmap[bit >> 15] |= (1 << ((bit >> 10) % 32));
 }
 
-static physical_addr_t* stack_popAddr(void)
-{
-    physical_addr_t* ret_addr = 0;
+static void paddm_clear_bit(udword_t bit) {
+    if(bit > 32768*32) return;
     
-    if(stack_offset == 0)
-    {
-        ret_addr = (physical_addr_t*)((physical_addr_t)stack_base & ~KERNEL_BASE);
-        stack_base = (physical_addr_t*) *(stack_base);
-        stack_offset = ADDR_PER_BLOCK-1;
-        
-        if(*(stack_base) == 0)
-            return (physical_addr_t*)0;
-    }
-    else
-    {
-        ret_addr = (physical_addr_t*) stack_base[--stack_offset];
-    }
-    
-    if(ret_addr == 0)
-        return (physical_addr_t*)0;
-    
-    return ret_addr;
+    block_bitmap[bit >> 5] &= ~(1 << (bit % 32));
+	superblock_bitmap[bit >> 15] &= ~(1 << ((bit >> 10) % 32));
 }
 
-void pmm_setRegionBase(physical_addr_t region_base)
-{
-    regions_base = (MemoryRegion*) region_base;
+int paddm_get_bit(udword_t bit) {
+    if(bit > 32768*32) return 1;
+    
+    return block_bitmap[bit >> 5] & (1 << (bit % 32));
 }
 
-void pmm_init(size_t memory_size, linear_addr_t memory_base)
+static int paddm_get_first_clear_bits(size_t num_bits)
 {
-    memory_size &= ~(BLOCK_SIZE-1);
+    if(num_bits == 0) return -1;
     
-    stackpage_base = memory_base;
-    stackpage_limit = ((memory_size / ADDR_PER_BLOCK)) + stackpage_base;
-    if(stackpage_limit & 0xFFF)
-    {
-        stackpage_limit &= ~0xFFF;
-        stackpage_limit += 0x2000;
-    }
-        
-    stack_base = (linear_addr_t*)memory_base;
+    size_t base_bit = 0;
+    size_t num_free_bits = 0;
     
-    stack_limit = stack_base;
-    
-    printf("PMM START: %lx, MEMSIZE: %lx", memory_base, memory_size);
-    
-    //Load pages for PMM
-    for(physical_addr_t start = stackpage_base; start < stackpage_limit; start += 0x1000)
-    {
-        vmm_map_address((linear_addr_t*)(start | KERNEL_BASE), (physical_addr_t*)(start - (physical_addr_t)&KERNEL_VIRTUAL_BASE), 0x3);
-    }
-    
-    *stack_base = 0;
-    
-    for(physical_addr_t addr = memory_size - BLOCK_SIZE; addr > 0; addr -= BLOCK_SIZE)
-    {
-        for(uword_t i = 0; i < region_indice; i++)
-        {
-            if(addr >= regions_base[i].start_addr && addr <= regions_base[i].end_addr && regions_base[i].flags & 3) {
-               addr = regions_base[i].start_addr;
-               if(addr <= 0) goto end;
+    for(size_t superblock_base = 0; superblock_base < 32; superblock_base++) {
+        if(superblock_bitmap[superblock_base] != 0xFFFFFFFF) {
+            for(size_t block_base = superblock_base << 6; block_base < 32768; block_base++) {
+                if(block_bitmap[block_base] != 0xFFFFFFFF) {
+                    for(size_t bit = 0; bit < 32; bit++) {
+                        
+                        if(paddm_get_bit(bit + block_base) == 0) {
+                            if(num_free_bits++ == 0) base_bit = (block_base) + bit;
+                            
+                            if(num_free_bits >= num_bits) return base_bit;
+                        }
+                        else num_free_bits = 0;
+                    }
+                }
             }
         }
-        
-        stack_pushAddr(addr);
     }
-    end:
-    is_pmm_init = 1;
+    
+    return -1;
 }
 
-void pmm_setRegion(physical_addr_t region_start, size_t region_size)
+void pmm_init()
 {
-    regions_base[region_indice].start_addr = region_start;
-    if((region_start+region_size) & 0xFFF)
-        regions_base[region_indice].end_addr = ((region_start+region_size) & 0xFFFFF000) + 0x1000;
-    else
-        regions_base[region_indice].end_addr = ((region_start+region_size) & 0xFFFFF000);
+    if(vmm_get_physical_addr((linear_addr_t*) PMM_BASE) == 0) {
+        vmm_map_address((linear_addr_t*) (PMM_BASE + 0x0000), (physical_addr_t*) 0x1000, PAGE_PRESENT | PAGE_RW);
+        vmm_map_address((linear_addr_t*) (PMM_BASE + 0x1000), (physical_addr_t*) 0x2000, PAGE_PRESENT | PAGE_RW);
+        vmm_map_address((linear_addr_t*) (PMM_BASE + 0x2000), (physical_addr_t*) 0x3000, PAGE_PRESENT | PAGE_RW);
+        vmm_map_address((linear_addr_t*) (PMM_BASE + 0x3000), (physical_addr_t*) 0x4000, PAGE_PRESENT | PAGE_RW);
+        vmm_map_address((linear_addr_t*) (PMM_BASE + 0x4000), (physical_addr_t*) 0x5000, PAGE_PRESENT | PAGE_RW);
+    }
     
-    regions_base[region_indice].flags = 0x00000003;
-    region_indice++;
-}
-
-void pmm_clearRegion(physical_addr_t region_start, size_t region_size)
-{
-    regions_base[region_indice].start_addr = region_start;
-    if((region_start+region_size) & 0xFFF)
-        regions_base[region_indice].end_addr = ((region_start+region_size) & 0xFFFFF000) + 0x1000;
-    else
-        regions_base[region_indice].end_addr = ((region_start+region_size) & 0xFFFFF000);
+    block_bitmap = (udword_t*) PMM_BASE;
+    superblock_bitmap = (udword_t*) (PMM_BASE + 0x4000);
     
-    regions_base[region_indice].flags = 0x00000001;
-    region_indice++;
+    kmemset((linear_addr_t*) PMM_BASE, 0xFF, 0x5000);
+    
+    is_inited = 1;
 }
 
 ubyte_t pmm_isInited()
 {
-    return is_pmm_init & 1;
+    return is_inited;
 }
 
-physical_addr_t* pmalloc(void)
+void pmm_clear_region(physical_addr_t base, size_t size)
 {
-    return stack_popAddr();
+    if(size == 0) return;
+    
+    for(udword_t blocks = base >> 12; blocks < (size + 0xFFF) >> 12; blocks++) paddm_clear_bit(blocks);
+    
+    block_bitmap[0] |= 0x7F;
 }
 
-void pfree(physical_addr_t* address)
+void pmm_set_region(physical_addr_t base, size_t size)
 {
-    stack_pushAddr((physical_addr_t)address);
+    if(size == 0) return;
+    
+    for(udword_t blocks = base >> 12; blocks < (size + 0xFFF) >> 12; blocks++) paddm_set_bit(blocks);
+    
+    block_bitmap[0] |= 0x7F;
+}
+
+physical_addr_t* pmalloc(size_t num_addresses)
+{
+	if(num_addresses == 0) return NULL;
+    
+    physical_addr_t frame = paddm_get_first_clear_bits(num_addresses);
+    if(frame == 0xFFFFFFFF || frame < 7) return NULL;
+    
+    for(size_t bit = 0; bit < num_addresses; bit++) paddm_set_bit(bit + frame);
+    
+    return (physical_addr_t*) (frame << 12);
+}
+
+void pfree(physical_addr_t* base_address, size_t num_addresses)
+{
+    if(num_addresses == 0 || base_address == NULL) return;
+	
+    physical_addr_t frame = (physical_addr_t)base_address >> 12;
+    
+    for(size_t bit = 0; bit < num_addresses; bit++) paddm_clear_bit(bit + frame);
 }
