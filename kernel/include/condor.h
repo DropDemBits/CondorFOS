@@ -47,7 +47,7 @@ typedef   signed char char_t;
 
 extern udword_t KERNEL_VIRTUAL_BASE;
 #define KERNEL_BASE (udword_t)&KERNEL_VIRTUAL_BASE
-#define PMM_BASE 0xC8000000
+#define VMM_BASE 0xC8000000
 
 /* Utilities */
 void kexit(int status);

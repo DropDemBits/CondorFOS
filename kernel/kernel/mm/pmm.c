@@ -46,7 +46,7 @@ static void stack_pushAddr(physical_addr_t addr)
         {
             stack_base = (physical_addr_t*) stack_base+0x400;
             
-            if(get_physical((linear_addr_t*)stack_base) == 0) kpanic("yee");
+            if(vmm_get_physical_addr((linear_addr_t*)stack_base) == 0) kpanic("yee");
             
             stack_offset = 0;
             stack_base[stack_offset++] = (physical_addr_t) stack_base-0x400;
@@ -109,10 +109,12 @@ void pmm_init(size_t memory_size, linear_addr_t memory_base)
     
     stack_limit = stack_base;
     
+    printf("PMM START: %lx, MEMSIZE: %lx", memory_base, memory_size);
+    
     //Load pages for PMM
     for(physical_addr_t start = stackpage_base; start < stackpage_limit; start += 0x1000)
     {
-        map_address((linear_addr_t*)(start | KERNEL_BASE), (physical_addr_t*)(start - (physical_addr_t)&KERNEL_VIRTUAL_BASE), 0x3);
+        vmm_map_address((linear_addr_t*)(start | KERNEL_BASE), (physical_addr_t*)(start - (physical_addr_t)&KERNEL_VIRTUAL_BASE), 0x3);
     }
     
     *stack_base = 0;

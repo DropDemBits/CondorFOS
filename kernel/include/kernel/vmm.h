@@ -42,7 +42,7 @@
  * @param flags The flags of the mapping
  * @return 1 if mapping had failed
  */
-ubyte_t map_address(linear_addr_t* laddr, physical_addr_t* paddr, uqword_t flags);
+ubyte_t vmm_map_address(linear_addr_t* laddr, physical_addr_t* paddr, uqword_t flags);
 
 /**
  * Unmaps a linear address
@@ -50,14 +50,14 @@ ubyte_t map_address(linear_addr_t* laddr, physical_addr_t* paddr, uqword_t flags
  * @param laddr The linear address to unmap
  * @return The physical address that the linear address mapped to
  */
-void unmap_address(linear_addr_t* laddr);
+void vmm_unmap_address(linear_addr_t* laddr);
 
 /**
  * Gets the physical address from a linear address
  * @param laddr The address to get the physical address from
  * @return The physical address mapped to the linear address, or NULL if no mapping was found
  */
-physical_addr_t* get_physical(linear_addr_t* laddr);
+physical_addr_t* vmm_get_physical_addr(linear_addr_t* laddr);
 
 /**
  * Initializes the VMM
@@ -70,10 +70,44 @@ void vmm_init(void);
  */                                                                                                                                    
 void vmm_switchPageBase(udword_t page_directory_base); 
 
-/* For later
-linear_addr_t* allocAddrs(size_t length);
+/**
+ * Initializes the Virtual Address Allocator
+ * 
+ * @param vaddm_base The linear address of the bitmaps
+ */
+void vaddm_init(linear_addr_t vaddm_base);
 
-void freeAddrs(void* addr, size_t length);
-*/
+/**
+ * Sets a region to not be allocated
+ * 
+ * @param base The base of the region
+ * @param size The length of the region
+ */
+void vaddm_set_region(linear_addr_t base, size_t size);
+
+/**
+ * Clears a region to be allocated
+ * 
+ * @param base The base of the region
+ * @param size The length of the region
+ */
+void vaddm_clear_region(linear_addr_t base, size_t size);
+
+/**
+ * Allocates virtual addresses
+ * 
+ * @param addresses The number of addresses to allocate
+ * @return The pointer to the beginning to the allocated addresses
+ */
+linear_addr_t* vmalloc(size_t addresses);
+
+/**
+ * Returns virtual addresses to be reallocated
+ * 
+ * @param base_addr The pointer to the beginning to the allocated addresses
+ * @param addresses The number of addresses allocated
+ */
+void vfree(linear_addr_t* base_addr, size_t addresses);
+
 
 #endif /* _VMM_H */

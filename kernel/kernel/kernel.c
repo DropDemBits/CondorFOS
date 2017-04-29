@@ -33,7 +33,6 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     }
     
     printf("Kernel (Start: %lx, End: %lx)\n", &kernel_start, &kernel_end);
-    //asm("xchg %bx, %bx");
     
     int mem_pages = 1;
     uqword_t mem_size = 0;
@@ -71,6 +70,9 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         vmm_init();
         logNorm("Initializing PMM\n");
         pmm_init(mem_size, (((udword_t)&kernel_end & 0xFFFFF000) + 0x3000 + (sizeof(MemoryRegion)*mem_pages)) & ~(0xFFF));
+        
+        logNorm("Initializing VADDM\n");
+        vaddm_init(VMM_BASE);
     }
     else kpanic("wut");
 
@@ -106,21 +108,20 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     physical_addr_t* paddr1 = pmalloc();
     printf("PADDR1 %#lx", paddr1);
     linear_addr_t* laddr = (linear_addr_t*)0xFFB00000;
-    map_address(laddr, paddr1, 0x3);
+    vmm_map_address(laddr, paddr1, 0x3);
     *laddr = 0xB00FBEEF;
-    unmap_address(laddr);
+    vmm_unmap_address(laddr);
     physical_addr_t* paddr2 = pmalloc();
-    map_address(laddr, paddr2, 0x3);
+    vmm_map_address(laddr, paddr2, 0x3);
     printf(", PADDR2 %#lx, AT ADDR: %#lx\n", paddr2, *laddr);
     if(paddr1 != paddr2 || *laddr != 0x00000000) kpanic("PMM Test failed");
-    unmap_address(laddr);
-
+    vmm_unmap_address(laddr);
+    
+    
+    
     //Initialization done, Enable interrupts
     asm("sti");
 }
-
-extern physical_addr_t* stack_base;
-extern size_t stack_offset;
 
 static char* getKernelRelType(udword_t type)
 {

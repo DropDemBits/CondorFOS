@@ -46,7 +46,7 @@ static void* psbrk(udword_t length, ubyte_t reduce)
         // Step2: Allocate Pages
         for(linear_addr_t* current_page = prev_limit; current_page < brk_limit; current_page += BLOCK_SIZE)
         {
-            map_address(current_page, pmalloc(), PAGE_PRESENT | PAGE_RW);
+            vmm_map_address(current_page, pmalloc(), PAGE_PRESENT | PAGE_RW);
         }
         
         // Step3: Return beginning of space
@@ -63,7 +63,7 @@ static void* psbrk(udword_t length, ubyte_t reduce)
         // Step2: Allocate Pages
         for(linear_addr_t* current_page = prev_limit; current_page > brk_limit; current_page -= BLOCK_SIZE)
         {
-            unmap_address(current_page);
+            vmm_unmap_address(current_page);
         }
         
         // Step3: Return beginning of space
@@ -87,7 +87,7 @@ void* liballoc_alloc(size_t length)
 {
     if(!has_mapped)
     {
-        map_address(brk_base, pmalloc(), PAGE_PRESENT | PAGE_RW);
+        vmm_map_address(brk_base, pmalloc(), PAGE_PRESENT | PAGE_RW);
         has_mapped = 1;
     }
     return psbrk(length, 0);
@@ -97,7 +97,7 @@ int liballoc_free(void* addr, size_t length)
 {
     if(!has_mapped)
     {
-        map_address(brk_base, pmalloc(), PAGE_PRESENT | PAGE_RW);
+        vmm_map_address(brk_base, pmalloc(), PAGE_PRESENT | PAGE_RW);
         has_mapped = 1;
     }
     
