@@ -55,8 +55,12 @@ char* serial_reads(uint16_t port, uint16_t length, char* dest)
 void serial_writechar(uint16_t port, char uc)
 {
     while(serial_writeReady(port) == 0);
-
-    outb(port, uc);
+    
+    if(uc == '\n') {
+        outb(port, '\r');
+        outb(port, '\n');
+    }
+    else outb(port, uc);
 }
 
 void serial_writes(uint16_t port, const char* string)

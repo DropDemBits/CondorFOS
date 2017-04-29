@@ -16,24 +16,24 @@ static char* levels[] = {
 void log(int16_t level, const char* string)
 {
     uint16_t index = level + 3;
-    uint16_t color = vga_makeColor(VGA_GREY, VGA_BLACK);
+    uint16_t color = vga_makeColor(VGA_GREY, terminal_getColor() >> 4);
 
-    if (level == LOG_FINE)    color = vga_makeColor(VGA_DARK_GREY, VGA_BLACK);
-    if (level == LOG_DEBUG)   color = vga_makeColor(VGA_GREEN, VGA_BLACK);
-    if (level == LOG_INFO)  color = vga_makeColor(VGA_GREY, VGA_BLACK);
-    if (level == LOG_NORMAL)  color = vga_makeColor(VGA_LIGHT_GREEN, VGA_BLACK);
-    if (level == LOG_WARNING) color = vga_makeColor(VGA_YELLOW, VGA_BLACK);
-    if (level == LOG_ERROR)   color = vga_makeColor(VGA_LIGHT_RED, VGA_BLACK);
-    if (level == LOG_FATAL)   color = vga_makeColor(VGA_RED, VGA_BLACK);
+    if (level == LOG_FINE)    color = vga_makeColor(VGA_DARK_GREY,   terminal_getColor() >> 4);
+    if (level == LOG_DEBUG)   color = vga_makeColor(VGA_GREEN,       terminal_getColor() >> 4);
+    if (level == LOG_INFO)    color = vga_makeColor(VGA_GREY,        terminal_getColor() >> 4);
+    if (level == LOG_NORMAL)  color = vga_makeColor(VGA_LIGHT_GREEN, terminal_getColor() >> 4);
+    if (level == LOG_WARNING) color = vga_makeColor(VGA_YELLOW,      terminal_getColor() >> 4);
+    if (level == LOG_ERROR)   color = vga_makeColor(VGA_RED,         terminal_getColor() >> 4);
+    if (level == LOG_FATAL)   color = vga_makeColor(VGA_LIGHT_RED,   terminal_getColor() >> 4);
     if (level >  LOG_FATAL || level < LOG_FINE) 
     {
-        color = vga_makeColor(VGA_LIGHT_BLUE, VGA_BLACK);
+        color = vga_makeColor(VGA_LIGHT_BLUE, terminal_getColor() >> 4);
         index = LOG_FATAL-LOG_FINE+1;
     }
 
-    terminal_putchar_Color('[', vga_makeColor(VGA_WHITE, VGA_BLACK));
+    terminal_putchar_Color('[', vga_makeColor(VGA_WHITE, terminal_getColor() >> 4));
     terminal_puts_Color(levels[index], color);
-    terminal_puts_Color("] ", vga_makeColor(VGA_WHITE, VGA_BLACK));
+    terminal_puts_Color("] ", vga_makeColor(VGA_WHITE, terminal_getColor() >> 4));
     terminal_puts(string);
     
     serial_writechar(COM1, '[');

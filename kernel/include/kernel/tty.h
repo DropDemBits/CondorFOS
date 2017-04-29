@@ -61,6 +61,12 @@ void terminal_scroll(void);
  */
 void terminal_setColor(uint8_t fg, uint8_t bg);
 
+/**
+ * Gets the current colour of the terminal
+ * @return the current colour of the terminal
+ */
+uint16_t terminal_getColor(void);
+
 void terminal_storePosition();
 
 void terminal_restorePosition();

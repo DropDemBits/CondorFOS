@@ -114,10 +114,7 @@ void isr_handler(stack_state_t* state)
     if(!isrs[state->int_num]) {
         if(state->int_num > 31) state->int_num = 31;
         
-        if(pmm_isInited()) kdump_useStack(state);
-        printf("ERR: %#x\n", state->err_code);
-        
-        kpanic(predefMSGS[state->int_num]);
+        kspanic(predefMSGS[state->int_num], state);
     } else
     {
         void (*handler)(stack_state_t*);

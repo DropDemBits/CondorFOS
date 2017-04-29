@@ -52,6 +52,7 @@ extern udword_t KERNEL_VIRTUAL_BASE;
 /* Utilities */
 void kexit(int status);
 void kpanic(const char* message);
+void kspanic(const char* message, stack_state_t* state);
 void kputchar(const char c);
 void kdump_useStack(stack_state_t* esp);
 void kdump_useRegs(uqword_t eip);

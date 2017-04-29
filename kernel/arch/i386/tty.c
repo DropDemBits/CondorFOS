@@ -176,6 +176,11 @@ void terminal_setColor(uint8_t fg, uint8_t bg)
     default_color = vga_makeColor(fg, bg);
 }
 
+uint16_t terminal_getColor()
+{
+    return default_color;
+}
+
 void terminal_storePosition()
 {
     terminal_column_store = terminal_column;

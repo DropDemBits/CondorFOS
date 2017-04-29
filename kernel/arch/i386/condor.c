@@ -24,6 +24,7 @@
 
 #include <kernel/stack_state.h>
 #include <kernel/tty.h>
+#include <kernel/vga.h>
 #include <kernel/klogger.h>
 
 extern udword_t stack_bottom;
@@ -95,9 +96,18 @@ void kexit(int status)
 
 void kpanic(const char* message)
 {
-    udword_t rsp = 0;
-    asm("movl %%esp, %0" : "=m"(rsp) :: "memory");
-    kdumpStack((uqword_t*)rsp, (udword_t)&stack_bottom);
+    kspanic(message, NULL);
+}
+
+void kspanic(const char* message, stack_state_t* state)
+{
+    terminal_setColor(VGA_WHITE, VGA_BLUE);
+    terminal_clear();
+    terminal_moveCursor(0,0);
+    if(state != NULL) kdump_useStack(state);
+    else {
+        
+    }
     
     logFErr(message);
     
@@ -135,30 +145,30 @@ void kdump_useStack(stack_state_t* state)
     serial_writes(COM1, "\nBEGIN DUMP\nREGS: EAX: 0x");
     itoa(state->eax, buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " EBX: 0x");
+    serial_writes(COM1, ", EBX: 0x");
     itoa(state->ebx, buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " ECX: 0x");
+    serial_writes(COM1, ", ECX: 0x");
     itoa(state->ecx, buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " EDX: 0x");
+    serial_writes(COM1, ", EDX: 0x");
     itoa(state->edx, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nESP: 0x");
     itoa((udword_t)esp-sizeof(stack_state_t), buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " EBP: 0x");
+    serial_writes(COM1, ", EBP: 0x");
     itoa(state->ebp, buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " ESI: 0x");
+    serial_writes(COM1, ", ESI: 0x");
     itoa(state->esi, buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " EDI: 0x");
+    serial_writes(COM1, ", EDI: 0x");
     itoa(state->edi, buffer, 16);
     serial_writes(COM1, buffer);
     
     //Segment registers
-    serial_writes(COM1, "SREGS:\nCS: ");
+    serial_writes(COM1, "\nSREGS:\nCS: ");
     itoa(state->cs, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nDS: ");
@@ -185,16 +195,16 @@ void kdump_useStack(stack_state_t* state)
     serial_writes(COM1, "\nCR0: ");
     itoa(readCR0(), buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " CR2: ");
+    serial_writes(COM1, ", CR2: ");
     itoa(readCR0(), buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " CR3: ");
+    serial_writes(COM1, ", CR3: ");
     itoa(readCR0(), buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, " CR4: ");
+    serial_writes(COM1, ", CR4: ");
     itoa(readCR0(), buffer, 16);
     serial_writes(COM1, buffer);
-    serial_writes(COM1, "\r\n");
+    serial_writechar(COM1, '\n');
 }
 
 void kdump_useRegs(uqword_t rip)
@@ -246,16 +256,16 @@ void kdumpStack(uqword_t* rsp, udword_t ebp)
         {
             formatting = 0;
             putchar('\n');
+            serial_writechar(COM1, '\n');
         }
-        serial_writes(COM1, "[STACK|");
-        itoa((udword_t)ind, buffer, 16);
-        serial_writes(COM1, buffer);
+        
         itoa(*ind, buffer, 16);
-        serial_writes(COM1, "] [");
         serial_writes(COM1, buffer);
-        serial_writes(COM1, "]\n");
+        serial_writes(COM1, ", ");
     }
+    
     putchar('\n');
+    serial_writechar(COM1, '\n');
 }
 
 void* kmemset(void* base, const int c, size_t length)
