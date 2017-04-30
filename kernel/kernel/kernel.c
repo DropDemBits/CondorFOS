@@ -150,8 +150,6 @@ void kmain()
     printf(")\n");
     while(keyboard_readKey()) asm("pause");
     
-    asm("int $13");
-    
     ubyte_t last_state = 0;
     
     while(1) {

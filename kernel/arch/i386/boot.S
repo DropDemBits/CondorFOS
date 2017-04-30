@@ -118,7 +118,7 @@ _start:
     # Initialize paging
     
     # Setup registers
-    movl $0, %esi
+    xor %esi, %esi
     movl $(pt0_start - KERNEL_VIRTUAL_BASE), %edi
     movl $2048, %ecx
 
