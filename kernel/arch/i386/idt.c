@@ -94,14 +94,7 @@ static char* predefMSGS[] = {
 };
 static uint32_t* descriptors;
 
-static void default_div0_isr(stack_state_t* state)
-{
-    //Increment eip by two bytes to skip over div instruction
-    state->eip += 2;
-    return;
-}
-
-static void default_int3_isr(stack_state_t* state)
+static void default_isr(stack_state_t* state)
 {
     //Just return, nothing special
     state->eip += 2;
@@ -111,37 +104,16 @@ static void default_int3_isr(stack_state_t* state)
 void isr_handler(stack_state_t* state)
 {
     
-    if(!isrs[state->int_num]) {
-        if(state->int_num > 31) state->int_num = 31;
-        
-        kspanic(predefMSGS[state->int_num], state);
-    } else
-    {
+    if(!isrs[state->int_num] && state->int_num < 32) kspanic(predefMSGS[state->int_num], state);
+    else {
         void (*handler)(stack_state_t*);
         if(isrs[state->int_num]) {
             handler = (void*) isrs[state->int_num];
             handler(state);
         }
     }
-}
-
-void irq_handler(stack_state_t* state)
-{
-    void (*handler)(stack_state_t*);
-    if(isrs[state->int_num]) {
-        handler = (void*) isrs[state->int_num];
-        handler(state);
-    }
+    
     ic_ack(state->int_num-32);
-}
-
-void trap_handler(stack_state_t* state)
-{
-    void (*handler)(stack_state_t*);
-    if(isrs[state->int_num]) {
-        handler = (void*) isrs[state->int_num];
-        handler(state);
-    }
 }
 
 static void idt_registerInterrupt(uint16_t int_num, uint32_t func_addr, uint16_t gdt_selector, uint8_t type_attrib)
@@ -202,26 +174,26 @@ void idt_init(uint32_t memory_location)
     idt_registerInterrupt(31, (uint32_t)isr31, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     hal_initPIC(IRQ0);
     //Hardware interrupts
-    idt_registerInterrupt(IRQ0,  (uint32_t)isr32, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ1,  (uint32_t)isr33, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ2,  (uint32_t)isr34, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ3,  (uint32_t)isr35, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ4,  (uint32_t)isr36, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ5,  (uint32_t)isr37, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ6,  (uint32_t)isr38, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ7,  (uint32_t)isr39, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ8,  (uint32_t)isr40, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ9,  (uint32_t)isr41, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ10, (uint32_t)isr42, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ11, (uint32_t)isr43, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ12, (uint32_t)isr44, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ13, (uint32_t)isr45, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ14, (uint32_t)isr46, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    idt_registerInterrupt(IRQ15, (uint32_t)isr47, 0x08, ISR_32_TRAPGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
-    //Mask all but irqs 0, 1, and 12
-    ic_unmaskIRQ(0);
+    idt_registerInterrupt(IRQ0,  (uint32_t)isr32, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ1,  (uint32_t)isr33, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ2,  (uint32_t)isr34, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ3,  (uint32_t)isr35, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ4,  (uint32_t)isr36, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ5,  (uint32_t)isr37, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ6,  (uint32_t)isr38, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ7,  (uint32_t)isr39, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ8,  (uint32_t)isr40, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ9,  (uint32_t)isr41, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ10, (uint32_t)isr42, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ11, (uint32_t)isr43, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ12, (uint32_t)isr44, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ13, (uint32_t)isr45, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ14, (uint32_t)isr46, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    idt_registerInterrupt(IRQ15, (uint32_t)isr47, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    //Mask all but irqs 1, 2, 12, 14, and 15
+    ic_maskIRQ(0);
     ic_unmaskIRQ(1);
-    ic_maskIRQ(2);
+    ic_unmaskIRQ(2);
     ic_maskIRQ(3);
     ic_maskIRQ(4);
     ic_maskIRQ(5);
@@ -237,6 +209,7 @@ void idt_init(uint32_t memory_location)
     ic_unmaskIRQ(15);
 
     //Add default ISRs
-    idt_addISR(0, (uint32_t)default_div0_isr);
-    idt_addISR(3, (uint32_t)default_int3_isr);
+    idt_addISR(0, (uint32_t)default_isr);
+    idt_addISR(1, (uint32_t)default_isr);
+    idt_addISR(3, (uint32_t)default_isr);
 }

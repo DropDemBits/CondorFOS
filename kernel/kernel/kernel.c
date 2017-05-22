@@ -8,6 +8,7 @@
 #include <kernel/klogger.h>
 #include <kernel/pmm.h>
 #include <kernel/tty.h>
+#include <kernel/tasks.h>
 #include <kernel/vmm.h>
 #include <kernel/ata.h>
 #include <condor.h>
@@ -15,6 +16,14 @@
 
 extern udword_t kernel_start;
 extern udword_t kernel_end;
+extern int kmain();
+extern int yeet();
+extern int zeet();
+
+void idle_task()
+{
+    while(1);
+}
 
 static char* mmap_types[6] = {"INV", "Available", "Reserved", "ACPI Reclaimable", "NVS", "BadRam"};
 
@@ -112,20 +121,31 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     
     logNorm("Testing VADDM\n");
     
-    linear_addr_t* laddr0 = valloc(8);
-    linear_addr_t* laddr1 = valloc(16);
-    linear_addr_t* laddr2 = valloc(32);
+    linear_addr_t* laddr0 = vmalloc(8);
+    linear_addr_t* laddr1 = vmalloc(16);
+    linear_addr_t* laddr2 = vmalloc(32);
     printf("LADDR0: %lx, LADDR1: %lx, LADDR2: %lx\n", laddr0, laddr1, laddr2);
     vfree(laddr1, 16);
     vfree(laddr0, 8);
-    laddr1 = valloc(16);
-    laddr0 = valloc(8);
+    laddr1 = vmalloc(16);
+    laddr0 = vmalloc(8);
     printf("LADDR0: %lx, LADDR1: %lx, LADDR2: %lx\n", laddr0, laddr1, laddr2);
     
-    if(laddr0 == NULL || laddr1 == NULL || laddr2 == NULL || laddr0 == laddr1) kpanic("VADDM Test failed");
-
-    //Initialization done, Enable interrupts
+    if(laddr0 == NULL || laddr1 == NULL || laddr2 == NULL || laddr0 == laddr1) asm("cli\n\thlt");//kpanic("VADDM Test failed");
+    vfree(laddr1, 16);
+    vfree(laddr0, 8);
+    vfree(laddr2, 32);
+    
+    process_create(idle_task);
+    process_create(yeet);
+    process_create(zeet);
+    //process_create(kmain);
+    
+    //Initialization done, Enable interrupts & timer
+    ic_unmaskIRQ(0);
     asm("sti");
+    
+    for(;;);
 }
 
 static char* getKernelRelType(udword_t type)
@@ -139,7 +159,25 @@ static char* getKernelRelType(udword_t type)
     }
 }
 
-void kmain()
+int yeet()
+{
+    while(1) {
+        terminal_setColor(VGA_BLACK, VGA_GREEN);
+        terminal_putchar('a');
+    }
+    return 0;
+}
+
+int zeet()
+{
+    while(1) {
+        terminal_setColor(VGA_WHITE, VGA_RED);
+        terminal_putchar('B');
+    }
+    return 0;
+}
+
+int kmain()
 {
     logNorm("Successfully Initialized kernel\n");
     terminal_puts("\nWelcome to ");
@@ -148,19 +186,25 @@ void kmain()
     udword_t* version = getKernelVersion();
     printf(KERNEL_VERSION_FORMATER, version[0], version[1], version[2], getKernelRelType(version[3]));
     printf(")\n");
+    
     while(keyboard_readKey()) asm("pause");
     
     ubyte_t last_state = 0;
-    
-    while(1) {
+
+    while(1)
+    {
 	    ubyte_t new_char = keyboard_readKey();
 
         if(new_char && keyboard_getKeyState(new_char) != last_state)
         {
-            if(keyboard_getChar(new_char)) printf("%c", keyboard_getChar(new_char));
+            if(keyboard_getChar(new_char)) {
+                printf("%c", keyboard_getChar(new_char));
+            }
             last_state = keyboard_getKeyState(new_char);
         } else last_state = 0;
 
-        asm("pause");
+        //asm("hlt");
     }
+    
+    return 0;
 }

@@ -24,9 +24,23 @@
 #include <kernel/hpet.h>
 #include <kernel/ps2.h>
 
+/**===================================================**\
+|*                 General Abstractions                *|
+\**===================================================**/
+
 void hal_init()
 {
     
+}
+
+void hal_disableInterrupts()
+{
+    asm("cli");
+}
+
+void hal_enableInterrupts()
+{
+    asm("sti");
 }
 
 /**===================================================**\

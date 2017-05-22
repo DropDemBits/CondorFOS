@@ -7,7 +7,15 @@
 #define HID_KEYBOARD 0
 #define HID_MOUSE 1
 
+/**===================================================**\
+|*                 General Abstractions                *|
+\**===================================================**/
+
 void hal_init();
+
+void hal_disableInterrupts();
+
+void hal_enableInterrupts();
 
 /**===================================================**\
 |*     Hardware abstraction for the PIC and the APIC   *|

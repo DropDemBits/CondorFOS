@@ -71,4 +71,6 @@ void terminal_storePosition();
 
 void terminal_restorePosition();
 
+void terminal_set_shouldUpdateCursor(uint8_t value);
+
 #endif

@@ -25,29 +25,29 @@ stack_top:
 .align 4096 # Align to page boundary
 
 pd_start:
-.skip 4096
+    .skip 4096
 pd_end:
 
 pt0_start:
-.skip 4096
+    .skip 4096
 pt0_end:
 
 pt1_start:
-.skip 4096
+    .skip 4096
 pt1_end:
 
 pt2_start:
-.skip 4096
+    .skip 4096
 pt2_end:
 
 # TSS Must be aligned to page boundary
 tss_start:
-.skip 0x68 # Size of tss
+    .skip 0x68 # Size of tss
 tss_end:
 
 .global sse2_support
 sse2_support:
-.skip 1
+    .skip 1
 
 .section .data
 # GDT sections
@@ -64,10 +64,9 @@ gdt_data:
 	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xFA, 0xCF, 0x00
 	# Usermode data segment
 	.byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0xF2, 0xCF, 0x00
+tss_descriptor:
     #TSS
-    .byte 0x67, 0x00
-    .word 0x0000
-    .byte 0x00, 0x89, 0x80, 0xC0
+    .byte 0x67, 0x00, 0x00, 0x00, 0x00, 0x89, 0x80, 0xC0
 gdt_end:
 
 .globl idt_data
@@ -200,7 +199,26 @@ _start:
 	call idt_init
 
 	lidt (idtr)
-        
+    
+    # Setup TSS
+    movl $tss_descriptor, %edi
+    movl $tss_start, %eax
+    
+    movw %ax, 2(%edi)
+    shr $16, %eax
+    movb %al, 4(%edi)
+    movb %ah, 7(%edi)
+
+    movl $tss_start, %edi
+    movw $0x10, 8(%edi)
+    movl %esp, 4(%edi)
+    movw $0x68, 102(%edi)
+    
+    # Load TSS
+    //xchg %bx, %bx
+    movw $0x28, %ax
+    ltr %ax
+    
     # Restore EAX and EBX
     movl 0xC0000500, %ebx
 	movl 0xC0000504, %eax
@@ -213,12 +231,9 @@ _start:
 	push %ebx # Address to info structure
 	call kinit
 
-	# Go into the main kernel
-	call kmain
-
 	# Hang if there's nothing to do
 .hang:
-        cli
+    cli
 	hlt
 	jmp .hang
         

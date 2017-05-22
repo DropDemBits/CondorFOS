@@ -182,18 +182,11 @@ ubyte_t ps2_init(void)
     detectDevice(DEV1);
     if(hasDEV2) detectDevice(DEV2);
     
-    if(devType[DEV1] == DEV_INV) {
-        config &= ~0x01;
-    } 
-    else {
-        config &= ~0x10;
-    }
+    if(devType[DEV1] == DEV_INV) config &= ~0x01;
+    else config &= ~0x10;
     
-    if(devType[DEV2] == DEV_INV) {
-        config &= ~0x02;
-    } else {
-        config &= ~0x20;
-    }
+    if(devType[DEV2] == DEV_INV) config &= ~0x02;
+    else config &= ~0x20;
     
     outb(PS2_STT_CMD, 0x60);
     outb(PS2_DATA, config);

@@ -27,6 +27,7 @@
 #define VADDM_BASE 0xC8000000
 
 extern udword_t readCR2();
+extern udword_t readCR3();
 extern void switchPageBase();
 extern udword_t stack_bottom;
 
@@ -60,7 +61,7 @@ static ubyte_t smap_page(linear_addr_t* laddr, physical_addr_t* paddr, uword_t f
     PAGE_TABLE_BASE[pt_index] = ((physical_addr_t)paddr & PAGE_ADDR_MASK) | (flags & PAGE_FLAG_MASK);
     
     flush_tlb(laddr);
-    memset(laddr, 0, 4096);
+    if(flags & PAGE_RW) memset(laddr, 0, 4096);
     return 0;
 }
 
@@ -87,20 +88,22 @@ static void pf_handler(stack_state_t* state)
     
     if(!(state->err_code & (PAGE_PRESENT | PAGE_USER))) {
         if(!pmm_isInited()) {
-            kdump_useStack(state);
             printf("ERR: %#lx\n", state->err_code);
-            kpanic("PF Before PMM was initialized");
+            kspanic("PF Before PMM was initialized", state);
         }
         else if(vmm_get_physical_addr(laddr) != 0) {
             PAGE_TABLE_BASE[(linear_addr_t)laddr >> BLOCK_BITS] |= PAGE_PRESENT;
         }
         else smap_page(laddr, pmalloc(1), PAGE_PRESENT | PAGE_RW);
     }
+    else if(state->err_code & PAGE_RW) {
+        kspanic("Failed Write", state);
+    }
 }
 
 ubyte_t vmm_map_address(linear_addr_t* laddr, physical_addr_t* paddr, uqword_t flags)
 {
-    if(paddr == 0) return 1;
+    if(paddr == 0 && (flags & PAGE_RW)) return 1;
     return smap_page(laddr, paddr, (udword_t)flags);
 }
 
@@ -128,10 +131,17 @@ void vmm_init()
     idt_addISR(14, (udword_t)pf_handler);
 }
 
-void vmm_switchPageBase(udword_t page_directory_base)
+void vmm_switch_page_base(physical_addr_t page_directory_base)
 {
+    if(page_directory_base == (readCR2() & ~0xFFF)) return;
     asm("movl %0, %%eax\n\t" :: "m"(page_directory_base));
     switchPageBase();
+}
+
+physical_addr_t vmm_get_current_page_base()
+{
+    physical_addr_t ret_val = readCR3() & ~0xFFF;
+    return ret_val;
 }
 
 // TODO: Decide whether to section off this region into another file...
@@ -166,27 +176,32 @@ static int vaddm_get_first_clear_bits(size_t num_bits)
     size_t base_bit = 0;
     size_t num_free_bits = 0;
     
-    for(size_t superpage_base = 0; superpage_base < 32; superpage_base++) {
+    /*for(size_t superpage_base = 0; superpage_base < 32; superpage_base++) {
         if(superpage_bitmap[superpage_base] != 0xFFFFFFFF) {
-            for(size_t page_base = superpage_base << 6; page_base < 32768; page_base++) {
-                if(page_bitmap[page_base] != 0xFFFFFFFF) {
-                    for(size_t bit = 0; bit < 32; bit++) {
-                        if(vaddm_get_bit(bit + page_base) == 0) {
-                            if(num_free_bits++ == 0) base_bit = (page_base) + bit;
-                            
-                            if(num_free_bits >= num_bits) return base_bit;
+            for(size_t super_bit = 0; super_bit < 32; super_bit++) {
+                if(superpage_bitmap[superpage_base] & ~(1 << super_bit)) {
+                    printf("%#lx\n", superpage_bitmap[superpage_base]);*/
+                for(size_t page_base = 0; page_base < 32768; page_base++) {
+                    if(page_bitmap[page_base] != 0xFFFFFFFF) {
+                        for(size_t bit = 0; bit < 32; bit++) {
+                            if(vaddm_get_bit(bit + page_base) == 0) {
+                                if(num_free_bits++ == 0) base_bit = (page_base) + bit;
+                                
+                                if(num_free_bits >= num_bits) return base_bit;
+                            }
+                            else num_free_bits = 0;
                         }
-                        else num_free_bits = 0;
                     }
                 }
+                /*}
             }
         }
-    }
+    }*/
     
     return -1;
 }
 
-linear_addr_t* valloc(size_t num_addresses)
+linear_addr_t* vmalloc(size_t num_addresses)
 {
     if(num_addresses == 0) return (linear_addr_t*) 0;
 	
@@ -235,6 +250,7 @@ void vaddm_init()
         retval |= vmm_map_address((linear_addr_t*) (VADDM_BASE + 0x2000), pmalloc(1), PAGE_RW | PAGE_PRESENT);
         retval |= vmm_map_address((linear_addr_t*) (VADDM_BASE + 0x3000), pmalloc(1), PAGE_RW | PAGE_PRESENT);
         retval |= vmm_map_address((linear_addr_t*) (VADDM_BASE + 0x4000), pmalloc(1), PAGE_RW | PAGE_PRESENT);
+        retval |= vmm_map_address((linear_addr_t*) (VADDM_BASE + 0x5000), NULL, PAGE_PRESENT);
         
         if(retval) kpanic("VADDM Page Mapping failure");
     }

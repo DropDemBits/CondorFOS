@@ -133,12 +133,15 @@ void kdump_useStack(stack_state_t* state)
     printf("SEGMENT REGS: VALUE (INDEX|TABLE|RPL)\n");
     printf("CS: %x (%d|%s|%d)\n", state->cs, state->cs >> 4, getTable(state->cs), state->cs & 0x2);
     printf("DS: %x (%d|%s|%d)\n", state->ds, state->ds >> 4, getTable(state->ds), state->ds & 0x2);
+    printf("SS: %x (%d|%s|%d)\n", state->ss, state->ss >> 4, getTable(state->ss), state->ss & 0x2);
     printf("ES: %x (%d|%s|%d)\n", state->es, state->es >> 4, getTable(state->es), state->es & 0x2);
     printf("FS: %x (%d|%s|%d)\n", state->fs, state->fs >> 4, getTable(state->fs), state->fs & 0x2);
     printf("GS: %x (%d|%s|%d)\n", state->gs, state->gs >> 4, getTable(state->gs), state->gs & 0x2);
     printf("EFLAGS: %#lx\n", state->eflags);
     printf("EIP: %#lx\n", state->eip);
+    printf("ERR: %#lx\n", state->err_code);
     printf("CR0: %lx, CR2: %lx, CR3: %lx, CR4: %lx\n", readCR0(), readCR2(), readCR3(), readCR4());
+    
     //Dump Registers to serial
     char buffer[65];
     //GPRs

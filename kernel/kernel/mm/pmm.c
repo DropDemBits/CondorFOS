@@ -26,7 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define PMM_BASE 0xC8005000
+#define PMM_BASE 0xC8006000
 
 static udword_t* superblock_bitmap;
 static udword_t* block_bitmap;
@@ -35,7 +35,7 @@ static ubyte_t is_inited;
 static void paddm_set_bit(udword_t bit) {
     if(bit > 32768*32) return;
     
-    block_bitmap[bit / 32] |= (1 << (bit % 32));
+    block_bitmap[bit >> 5] |= (1 << (bit % 32));
 	if(block_bitmap[(bit >> 5) & ~0x1] == 0xFFFFFFFF && block_bitmap[(bit >> 5) | 0x1] == 0xFFFFFFFF)
         superblock_bitmap[bit >> 15] |= (1 << ((bit >> 10) % 32));
 }
@@ -62,7 +62,7 @@ static int paddm_get_first_clear_bits(size_t num_bits)
     
     for(size_t superblock_base = 0; superblock_base < 32; superblock_base++) {
         if(superblock_bitmap[superblock_base] != 0xFFFFFFFF) {
-            for(size_t block_base = superblock_base << 6; block_base < 32768; block_base++) {
+            for(size_t block_base = 0; block_base < 32768; block_base++) {
                 if(block_bitmap[block_base] != 0xFFFFFFFF) {
                     for(size_t bit = 0; bit < 32; bit++) {
                         
@@ -89,6 +89,7 @@ void pmm_init()
         vmm_map_address((linear_addr_t*) (PMM_BASE + 0x2000), (physical_addr_t*) 0x3000, PAGE_PRESENT | PAGE_RW);
         vmm_map_address((linear_addr_t*) (PMM_BASE + 0x3000), (physical_addr_t*) 0x4000, PAGE_PRESENT | PAGE_RW);
         vmm_map_address((linear_addr_t*) (PMM_BASE + 0x4000), (physical_addr_t*) 0x5000, PAGE_PRESENT | PAGE_RW);
+        vmm_map_address((linear_addr_t*) (PMM_BASE + 0x5000), (physical_addr_t*) 0x0000, PAGE_PRESENT);
     }
     
     block_bitmap = (udword_t*) PMM_BASE;

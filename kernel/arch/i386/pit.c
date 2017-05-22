@@ -1,22 +1,27 @@
+#include <stdio.h>
+
+#include <kernel/stack_state.h>
 #include <kernel/idt.h>
 #include <kernel/pit.h>
+#include <kernel/tasks.h>
 #include <io.h>
-#include <stdio.h>
 
 static volatile uint32_t _timer_ticks;
 static volatile uint32_t _timer_millis;
 
-void timer_isr()
+void timer_isr(stack_state_t* state)
 {
     _timer_ticks++;
-    if(_timer_ticks % MILLI_INTERVAL) _timer_millis++;
+    if(_timer_ticks % MILLI_INTERVAL) {
+        _timer_millis++;
+    }
+    process_preempt(state);
 }
 
 void pit_init()
 {
     pit_createCounter(MAIN_FRQ, PIT_COUNTER0, 0x34);
     pit_createCounter(0x1, PIT_COUNTER2, 0x36);
-    outb(0x61, 0x3);
     idt_addISR(32, (uint32_t)timer_isr);
 }
 

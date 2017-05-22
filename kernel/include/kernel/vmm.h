@@ -68,7 +68,13 @@ void vmm_init(void);
  * Switches the PD Pointer to the specified PD                                                                                         
  * @param page_directory_base The PD to point to                                                                                       
  */                                                                                                                                    
-void vmm_switchPageBase(udword_t page_directory_base); 
+void vmm_switch_page_base(udword_t page_directory_base); 
+
+/**
+ * Gets the current PD Pointer
+ * @return The current PD pointer
+ */
+physical_addr_t vmm_get_current_page_base();
 
 /**
  * Initializes the Virtual Address Manager
@@ -98,7 +104,7 @@ void vaddm_clear_region(linear_addr_t base, size_t size);
  * @param addresses The number of addresses to allocate
  * @return The pointer to the beginning to the allocated addresses
  */
-linear_addr_t* valloc(size_t addresses);
+linear_addr_t* vmalloc(size_t addresses);
 
 /**
  * Returns virtual addresses to be reallocated

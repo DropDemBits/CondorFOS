@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <kernel/idt.h>
 
+#include "kernel/ps2.h"
+
 #define STATE_BREAK     0x1
 #define STATE_EXTENDED0 0x2
 #define STATE_EXTENDED1 0x4
@@ -17,7 +19,21 @@ typedef struct KeyMapping {
     char altgr;
 } keymap;
 
-#define DEF_MAPPING {{0,0,0},{'a','A',0},{'b','B',0},{'c','C',0},{'d','D',0},{'e','E',0},{'f','F',0},{'g','G',0},{'h','H',0},{'i','I',0},{'j','J',0},{'k','K',0},{'l','L',0},{'m','M',0},{'n','N',0},{'o','O',0},{'p','P',0},{'q','Q',0},{'r','R',0},{'s','S',0},{'t','T',0},{'u','U',0},{'v','V',0},{'w','W',0},{'x','X',0},{'y','Y',0},{'z','Z',0},{'0',')',0},{'1','!',0},{'2','@',0},{'3','#',0},{'4','$',0},{'5','%',0},{'6','^',0},{'7','&',0},{'8','*',0},{'9','(',0},{'`','~',0},{'-','_',0},{'=','+',0},{'\\','|',0},{' ',' ',0},{'\t','\0',0},{'/','/',0},{'*','*',0},{'-','-',0},{'+','+',0},{'.','\0',0},{'0','\0',0},{'1','\0',0},{'2','\0',0},{'3','\0',0},{'4','\0',0},{'5','\0',0},{'6','\0',0},{'7','\0',0},{'8','\0',0},{'9','\0',0},{']','}',0},{';',':',0},{'\'','\"',0},{',','<',0},{'.','>',0},{'/','?',0},{'[','{',0},{'\b','\b',0},{'\n','\n',0},{'\n','\n',0}}
+#define DEF_MAPPING \
+{{0,    0,    0}, {'a',  'A',  0}, {'b',  'B',  0}, {'c',  'C',  0}, {'d',  'D',  0}, \
+ {'e',  'E',  0}, {'f',  'F',  0}, {'g',  'G',  0}, {'h',  'H',  0}, {'i',  'I',  0}, \
+ {'j',  'J',  0}, {'k',  'K',  0}, {'l',  'L',  0}, {'m',  'M',  0}, {'n',  'N',  0}, \
+ {'o',  'O',  0}, {'p',  'P',  0}, {'q',  'Q',  0}, {'r',  'R',  0}, {'s',  'S',  0}, \
+ {'t',  'T',  0}, {'u',  'U',  0}, {'v',  'V',  0}, {'w',  'W',  0}, {'x',  'X',  0}, \
+ {'y',  'Y',  0}, {'z',  'Z',  0}, {'0',  ')',  0}, {'1',  '!',  0}, {'2',  '@',  0}, \
+ {'3',  '#',  0}, {'4',  '$',  0}, {'5',  '%',  0}, {'6',  '^',  0}, {'7',  '&',  0}, \
+ {'8',  '*',  0}, {'9',  '(',  0}, {'`',  '~',  0}, {'-',  '_',  0}, {'=',  '+',  0}, \
+ {'\\', '|',  0}, {' ',  ' ',  0}, {'\t', '\0', 0}, {'/',  '/',  0}, {'*',  '*',  0}, \
+ {'-',  '-',  0}, {'+',  '+',  0}, {'.',  '\0', 0}, {'0',  '\0', 0}, {'1',  '\0', 0}, \
+ {'2',  '\0', 0}, {'3',  '\0', 0}, {'4',  '\0', 0}, {'5',  '\0', 0}, {'6',  '\0', 0}, \
+ {'7',  '\0', 0}, {'8',  '\0', 0}, {'9',  '\0', 0}, {']',  '}',  0}, {';',  ':',  0}, \
+ {'\'', '\"', 0}, {',',  '<',  0}, {'.',  '>',  0}, {'/',  '?',  0}, {'[',  '{',  0}, \
+ {'\b', '\b', 0}, {'\n', '\n', 0}, {'\n', '\n', 0}, {0,    0,    0}, {0,    0,    0}, }
 static ubyte_t translation_map[] =
 {KEY_NONE, KEY_F9, KEY_NONE, KEY_F5, KEY_F3, KEY_F1, KEY_F2, KEY_F12, KEY_NONE, KEY_F10, KEY_F8, KEY_F6, KEY_F4, KEY_TAB, KEY_GRAVE, KEY_NONE, KEY_NONE, KEY_LALT, KEY_LSHIFT, KEY_NONE, KEY_LCTRL, KEY_Q, KEY_1, KEY_NONE, KEY_NONE, KEY_NONE, KEY_Z, KEY_S, KEY_A, KEY_W, KEY_2, KEY_NONE, KEY_NONE, KEY_C, KEY_X, KEY_D, KEY_E, KEY_4, KEY_3, KEY_NONE, KEY_NONE, KEY_SPACE, KEY_V, KEY_F, KEY_T, KEY_R, KEY_5, KEY_NONE, KEY_NONE, KEY_N, KEY_B, KEY_H, KEY_G, KEY_Y, KEY_6, KEY_NONE, KEY_NONE, KEY_NONE, KEY_M, KEY_J, KEY_U, KEY_7, KEY_8, KEY_NONE, KEY_NONE, KEY_COMMA, KEY_K, KEY_I, KEY_O, KEY_0, KEY_9, KEY_NONE, KEY_NONE, KEY_DOT, KEY_SLASH, KEY_L, KEY_SEMICOLON, KEY_P, KEY_DASH, KEY_NONE, KEY_NONE, KEY_NONE, KEY_APOSTROPHE, KEY_NONE, KEY_LBRACE, KEY_EQUALS, KEY_NONE, KEY_NONE, KEY_CAPS_LOCK, KEY_RSHIFT, KEY_ENTER, KEY_RBRACE, KEY_NONE, KEY_BACKSLASH, KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE, KEY_BACKSPACE, KEY_NONE, KEY_NONE, KEY_KP_1, KEY_NONE, KEY_KP_4, KEY_KP_7, KEY_NONE, KEY_NONE, KEY_NONE, KEY_KP_0, KEY_KP_DOT, KEY_KP_2, KEY_KP_5, KEY_KP_6, KEY_KP_8, KEY_ESCAPE, KEY_NUM_LOCK, KEY_F11, KEY_KP_PLUS, KEY_KP_3, KEY_KP_MINUS, KEY_KP_STAR, KEY_KP_9, KEY_SCROLL_LOCK, KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE, KEY_F7};
 
