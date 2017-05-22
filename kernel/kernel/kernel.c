@@ -102,7 +102,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     //Do tests
 
     logNorm("Testing PMM\n");
-    physical_addr_t* paddr_big = pmalloc(64);
+    physical_addr_t* paddr_big = pmalloc(4096);
     physical_addr_t* paddr1 = pmalloc(1);
     printf("PADDR1 %#lx, BIG_ALLOC: %#lx", paddr1, paddr_big);
     
@@ -111,7 +111,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     *laddr = 0xB00FBEEF;
     vmm_unmap_address(laddr);
     
-    pfree(paddr_big, 64);
+    pfree(paddr_big, 4096);
     physical_addr_t* paddr2 = pmalloc(1);
     vmm_map_address(laddr, paddr2, 0x3);
     printf(", PADDR2 %#lx, AT ADDR: %#lx", paddr2, *laddr);
@@ -123,7 +123,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     
     linear_addr_t* laddr0 = vmalloc(8);
     linear_addr_t* laddr1 = vmalloc(16);
-    linear_addr_t* laddr2 = vmalloc(32);
+    linear_addr_t* laddr2 = vmalloc(4096);
     printf("LADDR0: %lx, LADDR1: %lx, LADDR2: %lx\n", laddr0, laddr1, laddr2);
     vfree(laddr1, 16);
     vfree(laddr0, 8);
@@ -134,7 +134,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     if(laddr0 == NULL || laddr1 == NULL || laddr2 == NULL || laddr0 == laddr1) asm("cli\n\thlt");//kpanic("VADDM Test failed");
     vfree(laddr1, 16);
     vfree(laddr0, 8);
-    vfree(laddr2, 32);
+    vfree(laddr2, 4096);
     
     process_create(idle_task);
     process_create(yeet);

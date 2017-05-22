@@ -176,27 +176,28 @@ static int vaddm_get_first_clear_bits(size_t num_bits)
     size_t base_bit = 0;
     size_t num_free_bits = 0;
     
-    /*for(size_t superpage_base = 0; superpage_base < 32; superpage_base++) {
+    for(size_t superpage_base = 0; superpage_base < 32; superpage_base++) {
         if(superpage_bitmap[superpage_base] != 0xFFFFFFFF) {
             for(size_t super_bit = 0; super_bit < 32; super_bit++) {
-                if(superpage_bitmap[superpage_base] & ~(1 << super_bit)) {
-                    printf("%#lx\n", superpage_bitmap[superpage_base]);*/
-                for(size_t page_base = 0; page_base < 32768; page_base++) {
-                    if(page_bitmap[page_base] != 0xFFFFFFFF) {
-                        for(size_t bit = 0; bit < 32; bit++) {
-                            if(vaddm_get_bit(bit + page_base) == 0) {
-                                if(num_free_bits++ == 0) base_bit = (page_base) + bit;
-                                
-                                if(num_free_bits >= num_bits) return base_bit;
+                if((superpage_bitmap[superpage_base] & (1 << super_bit)) == 0) {
+                    for(size_t page_base = (superpage_base << 10) | (super_bit << 10);
+                        page_base < 32768; page_base++) {
+                        
+                        if(page_bitmap[page_base] != 0xFFFFFFFF) {
+                            for(size_t bit = 0; bit < 32; bit++) {
+                                if(vaddm_get_bit(bit + page_base) == 0) {
+                                    if(num_free_bits++ == 0) base_bit = (page_base) + bit;
+                                    
+                                    if(num_free_bits >= num_bits) return base_bit;
+                                }
+                                else num_free_bits = 0;
                             }
-                            else num_free_bits = 0;
                         }
                     }
                 }
-                /*}
             }
         }
-    }*/
+    }
     
     return -1;
 }

@@ -62,16 +62,22 @@ static int paddm_get_first_clear_bits(size_t num_bits)
     
     for(size_t superblock_base = 0; superblock_base < 32; superblock_base++) {
         if(superblock_bitmap[superblock_base] != 0xFFFFFFFF) {
-            for(size_t block_base = 0; block_base < 32768; block_base++) {
-                if(block_bitmap[block_base] != 0xFFFFFFFF) {
-                    for(size_t bit = 0; bit < 32; bit++) {
+            for(size_t super_bit = 0; super_bit < 32; super_bit++) {
+                if((superblock_bitmap[superblock_base] & (1 << super_bit)) == 0) {
+                    for(size_t block_base = (superblock_base << 10) | (super_bit << 10);
+                        block_base < 32768; block_base++) {
                         
-                        if(paddm_get_bit(bit + block_base) == 0) {
-                            if(num_free_bits++ == 0) base_bit = (block_base) + bit;
-                            
-                            if(num_free_bits >= num_bits) return base_bit;
+                        if(block_bitmap[block_base] != 0xFFFFFFFF) {
+                            for(size_t bit = 0; bit < 32; bit++) {
+                                
+                                if(paddm_get_bit(bit + block_base) == 0) {
+                                    if(num_free_bits++ == 0) base_bit = (block_base) + bit;
+                                    
+                                    if(num_free_bits >= num_bits) return base_bit;
+                                }
+                                else num_free_bits = 0;
+                            }
                         }
-                        else num_free_bits = 0;
                     }
                 }
             }
