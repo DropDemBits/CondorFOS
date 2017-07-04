@@ -1,7 +1,23 @@
+/*
+ * Copyright (C) 2017 DropDemBits <r3usrlnd@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 .section .text
 .extern isr_handler
-.extern irq_handler
-.extern trap_handler
+.extern ic_checkSpurious
 
 .macro isr_no_errno int_num
 .globl isr\int_num\()
@@ -14,14 +30,37 @@ isr\int_num\():
 .macro isr_errno int_num
 .globl isr\int_num\()
 isr\int_num\():
-    
+
     push $\int_num\()
-    jmp prep_isr    
+    jmp prep_isr
 .endm
 
 .macro irq int_num
 .globl isr\int_num\()
 isr\int_num\():
+    push $0
+    push $\int_num\()
+    jmp prep_isr
+.endm
+
+.macro irq_spurious int_num
+.globl isr\int_num\()
+isr\int_num\():
+    #Check spurious
+    push %eax
+    push %edx
+    push %ecx
+
+    push $\int_num-32\()
+    call ic_checkSpurious
+    addl $4, %esp
+    test $1, %eax
+
+    pop %ecx
+    pop %edx
+    pop %eax
+    jnz fini_isr
+
     push $0
     push $\int_num\()
     jmp prep_isr
@@ -74,7 +113,7 @@ IRQ 35
 IRQ 36
 IRQ 37
 IRQ 38
-IRQ 39
+IRQ_SPURIOUS 39
 IRQ 40
 IRQ 41
 IRQ 42
@@ -82,7 +121,7 @@ IRQ 43
 IRQ 44
 IRQ 45
 IRQ 46
-IRQ 47
+IRQ_SPURIOUS 47
 
 prep_isr:
     # Because ESP and SS aren't pushed when there's no privilege change,
@@ -97,7 +136,7 @@ common_isr:
     push %es
     push %fs
     push %gs
-    
+
     movl $0x10, %edx
     movw %dx, %ds
     movw %dx, %es
@@ -107,7 +146,7 @@ common_isr:
     push %esp
     call isr_handler
     addl $4, %esp
-    
+
     popl %gs
     popl %fs
     popl %es
@@ -123,7 +162,7 @@ fini_isr:
     iret
 
 # The following section was created using the help of source code
-# from Sortix 
+# from Sortix
 
 change_stack:
     # Moves stuff pushed by CPU up the stack by 8 bytes
@@ -146,44 +185,44 @@ change_stack:
     # |             |    |             |
     # ---------------    ---------------
     # |             |    |             |
-    #       ...                ...     
-    
+    #       ...                ...
+
     movl %eax, -4-8(%esp) # Used as temporary storage
-    
+
     # Int num
     movl 0(%esp), %eax
     movl %eax, -8(%esp)
-    
+
     # Err code
     movl 4(%esp), %eax
     movl %eax, -4(%esp)
-    
+
     # EIP
     movl 8(%esp), %eax
     movl %eax, 0(%esp)
-    
+
     # CS
     movl 12(%esp), %eax
     movl %eax, 4(%esp)
-    
+
     # EFLAGS
     movl 16(%esp), %eax
     movl %eax, 8(%esp)
-    
+
     # ESP
     movl %esp, %eax
     addl $(5*4), %eax
     movl %eax, 12(%esp)
-    
+
     # SS
     movl %ss, %eax
     movl %eax, 16(%esp)
-    
+
     # Finally, adjust ESP to new base
     subl $8, %esp
     # Also restore EAX
     movl -4(%esp), %eax
-    
+
     jmp common_isr
 
 revert_change_stack:
@@ -193,25 +232,25 @@ revert_change_stack:
     # If we are returning to the same stack, we need to be careful on where we
     # copy our things as to not overwrite anything. For that case, make it
     # so that we are effectively shifting the pushed data down 8 bytes.
-    
+
     movl %eax, -4(%esp)
     movl %ebx, -8(%esp)
     movl %ecx, -12(%esp)
-    
+
     # Setup registers
     movl 12(%esp), %ebx # New ESP
     movl 16(%esp), %ecx # New SS
 
     # Adjust new stack pointer for space for 3 dwords
     subl $(3*4), %ebx
-    
+
     # Copy over saved data to new stack
     # Also, begin at 8 bytes after as to not overwrite data if switching to
     # the same stack
-    
+
     # For these, it order doesn't matter as we aren't overwritting anything
     # important in the (same) stack
-    
+
     # EAX
     movl -4(%esp), %eax
     movl %eax, -12(%ebx)
@@ -219,34 +258,34 @@ revert_change_stack:
     # EBX
     movl -8(%esp), %eax
     movl %eax, -16(%ebx)
-    
+
     # ECX
     movl -12(%esp), %eax
     movl %eax, -20(%ebx)
-    
+
     # For these, we need to do EFLAGS first as to not be overwritten by EIP
     # If we are switching to the same stack
-    
+
     # EFLAGS
     movl 8(%esp), %eax
     movl %eax, 8(%ebx)
-    
+
     # CS
     movl 4(%esp), %eax
     movl %eax, 4(%ebx)
-    
+
     # EIP
     movl 0(%esp), %eax
     movl %eax, 0(%ebx)
-    
+
     # Switch over to new stack
     movw %cx, %ss
     movl %ebx, %esp
-    
+
     # Finally, restore registers
     movl -12(%esp), %eax
     movl -16(%esp), %ebx
     movl -20(%esp), %ecx
-    
+
     # Return to main routine
     jmp fini_isr

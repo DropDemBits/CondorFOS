@@ -42,12 +42,12 @@ $(CRTN_OBJ) \
 	$(CC) -c -o $@ $< $(CFLAGS) $(addprefix -I,$(INCLUDE_DIRS))
 
 $(KERN): $(OBJ_LINKS)
-	$(CC) -T $(ARCH_LDFILE) -o $@ $(LDFLAGS) $(BUILD_OBJ) $(ARCH_OBJ) $(LIBS)
+	$(CC) -T $(ARCH_LDFILE) -o $@ $(LDFLAGS) $(BUILD_OBJ) $(ARCH_OBJ) $(LIBS) -D _$(TARGET_ARCH)_
 iso: $(KERN)
 	cp $(KERN) ../isodir/boot/$(KERN)
 	i686-grub-mkrescue -o ../$(ISO) ../isodir
 clean:
-	rm -f $(OBJS) $(ARCH_OBJ) ../$(ISO) $(KERN) kern.sym ../condor.sym ./*.i ./*.ii
+	rm -f $(BUILD_OBJ) $(ARCH_OBJ) ../$(ISO) $(KERN) kern.sym ../condor.sym ./*.i ./*.ii
 
 install-headers:
 	mkdir -p $(SYSROOT)$(PREFIX)/include

@@ -31,6 +31,7 @@
 #define PAGE_PRESENT   0x00000001
 #define PAGE_RW        0x00000002
 #define PAGE_USER      0x00000004
+#define PAGE_REMAP     0x00001000
 #define PAGE_FLAG_MASK 0x00000FFF
 #define PAGE_ADDR_MASK 0xFFFFF000
 
@@ -64,11 +65,11 @@ physical_addr_t* vmm_get_physical_addr(linear_addr_t* laddr);
  */
 void vmm_init(void);
 
-/**                                                                                                                                    
- * Switches the PD Pointer to the specified PD                                                                                         
- * @param page_directory_base The PD to point to                                                                                       
- */                                                                                                                                    
-void vmm_switch_page_base(udword_t page_directory_base); 
+/**
+ * Switches the PD Pointer to the specified PD
+ * @param page_directory_base The PD to point to
+ */
+void vmm_switch_page_base(udword_t page_directory_base);
 
 /**
  * Gets the current PD Pointer
@@ -78,13 +79,13 @@ physical_addr_t vmm_get_current_page_base();
 
 /**
  * Initializes the Virtual Address Manager
- * 
+ *
  */
 void vaddm_init(void);
 
 /**
  * Sets a region to not be allocated
- * 
+ *
  * @param base The base of the region
  * @param size The length of the region
  */
@@ -92,7 +93,7 @@ void vaddm_set_region(linear_addr_t base, size_t size);
 
 /**
  * Clears a region to be allocated
- * 
+ *
  * @param base The base of the region
  * @param size The length of the region
  */
@@ -100,7 +101,7 @@ void vaddm_clear_region(linear_addr_t base, size_t size);
 
 /**
  * Allocates virtual addresses
- * 
+ *
  * @param addresses The number of addresses to allocate
  * @return The pointer to the beginning to the allocated addresses
  */
@@ -108,7 +109,7 @@ linear_addr_t* vmalloc(size_t addresses);
 
 /**
  * Returns virtual addresses to be reallocated
- * 
+ *
  * @param base_addr The pointer to the beginning to the allocated addresses
  * @param addresses The number of addresses allocated
  */

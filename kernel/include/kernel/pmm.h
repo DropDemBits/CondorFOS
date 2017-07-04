@@ -24,6 +24,7 @@
 
 #include <kernel/addrs.h>
 #include <condor.h>
+#include <multiboot.h>
 
 #ifndef _PMM_H
 #define _PMM_H
@@ -33,19 +34,47 @@
  */
 #define BLOCK_SIZE 0x1000
 
-/**
- * Bit shift offset to the beginning of the actual address
- */
-#define BLOCK_BITS 0xC
+#define BLOCK_BITS 12
 
-#define ADDR_PER_BLOCK (BLOCK_SIZE / sizeof(physical_addr_t))-1
+#define MAX_BLOCKS 128
+
+#define MAX_SUPERBLOCKS 8
+
+#define PADDING_SIZE (0x400 - (MAX_BLOCKS + MAX_SUPERBLOCKS))
+
+typedef struct {
+    uint32_t block_bitmap[MAX_BLOCKS];
+    uint32_t superblock_bitmap[MAX_SUPERBLOCKS];
+    uint32_t reserved[PADDING_SIZE];
+} lomem_bitmaps_t;
+
+typedef struct {
+    uint32_t backlink;
+    uint32_t freeAddrs[1023];
+} free_stack32_t;
+
+typedef struct {
+    uint64_t backlink;
+    uint64_t freeAddrs[511];
+} free_stack64_t;
+
+typedef struct {
+    uint64_t align_64kb : 1;
+    uint64_t low_mem : 1;
+    uint64_t contiguous : 1;
+    uint64_t big_page : 1;
+    uint64_t low_4gb : 1;
+    uint64_t reserved : 11;
+    uint64_t page_alloc_num : 16;
+} palloc_flags_t;
 
 /**
  * void pmm_init(void);
  *
  * Initializes the PMM
+ * @param mmap_base The pointer to the base of the memory map
  */
-void pmm_init(void);
+void pmm_init(multiboot_memory_map_t* mmap_base, size_t mmap_length);
 
 /**
  * void pmm_setRegion(physical_addr_t region_start, size_t region_size);
@@ -74,13 +103,21 @@ void pmm_clear_region(physical_addr_t region_start, size_t region_size);
 ubyte_t pmm_isInited(void);
 
 /**
- * physical_addr_t* pmalloc(size_t num_addresses);
+ * physical_addr_t* pmalloc();
  *
  * Allocates page size blocks
- * @param num_addresses The number of addresses to allocate
  * @return The address to the allocated block
  */
-physical_addr_t* pmalloc(size_t num_addresses);
+physical_addr_t* pmalloc();
+
+/**
+ * physical_addr_t* kpmalloc(palloc_flags_t alloc_flags);
+ *
+ * Allocates page size blocks
+ * @param alloc_flags The conditions of allocting a block
+ * @return The address to the allocated block(s)
+ */
+physical_addr_t* kpmalloc(palloc_flags_t alloc_flags);
 
 /**
  * void pfree(physical_addr_t* address, size_t num_addresses);

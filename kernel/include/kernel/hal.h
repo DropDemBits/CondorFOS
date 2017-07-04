@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2017 DropDemBits <r3usrlnd@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <condor.h>
 
 #ifndef _HAL_H_
@@ -27,11 +44,13 @@ udword_t ic_readReg();
 
 void ic_writeReg();
 
-void ic_ack(ubyte_t irq);
+void ic_ack(uint8_t irq);
 
-void ic_unmaskIRQ(uword_t irq);
+void ic_unmaskIRQ(uint8_t irq);
 
-void ic_maskIRQ(uword_t irq);
+void ic_maskIRQ(uint8_t irq);
+
+int ic_checkSpurious(uint8_t irq);
 
 /**===================================================**\
 |*     Hardware abstraction for the PIT and the HPET   *|

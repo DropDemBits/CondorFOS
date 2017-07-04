@@ -5,7 +5,7 @@ void* memmove(void* dest, const void* src, size_t num)
 {
     if(dest == src) return 0;
     
-    //TODO: implement faster setting
+    //TODO: implement faster moving (arch specific?)
     unsigned char *cdest = (unsigned char*) dest;
     unsigned char *csrc = (unsigned char*) src;
     if(cdest < csrc)

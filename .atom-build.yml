@@ -1,0 +1,10 @@
+cmd: "echo Select other targets"
+targets:
+    run-bochs:
+        cmd: "./bochs.sh"
+    run-qemu:
+        cmd: "./qemu.sh"
+    make-iso:
+        cmd: "./iso.sh"
+    clean:
+        cmd: "./clean.sh"

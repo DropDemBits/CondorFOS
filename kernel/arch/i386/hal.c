@@ -30,7 +30,7 @@
 
 void hal_init()
 {
-    
+
 }
 
 void hal_disableInterrupts()
@@ -67,14 +67,19 @@ void ic_ack(ubyte_t irq)
     pic_ack(irq);
 }
 
-void ic_unmaskIRQ(uword_t irq)
+void ic_unmaskIRQ(uint8_t irq)
 {
     pic_unmaskIRQ(irq);
 }
 
-void ic_maskIRQ(uword_t irq)
+void ic_maskIRQ(uint8_t irq)
 {
     pic_maskIRQ(irq);
+}
+
+int ic_checkSpurious(uint8_t irq)
+{
+    return pic_checkSpurious(irq);
 }
 
 /**===================================================**\

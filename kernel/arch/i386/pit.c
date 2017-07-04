@@ -14,8 +14,8 @@ void timer_isr(stack_state_t* state)
     _timer_ticks++;
     if(_timer_ticks % MILLI_INTERVAL) {
         _timer_millis++;
+        process_preempt(state);
     }
-    process_preempt(state);
 }
 
 void pit_init()

@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  * condor.c: Implementation of condor.h
  */
 #include <condor.h>
@@ -43,47 +43,13 @@ static udword_t version[] = {0, 2, 0, KERNEL_TYPE_ALPHA};
 
 static char* getTable(int table)
 {
-    if(table & 4) return "LDT";
+    if(table & 0b100) return "LDT";
     else return "GDT";
 }
 
 udword_t* getKernelVersion()
 {
     return version;
-}
-
-void itoa(qword_t number, char* str, int radix)
-{
-    int begin = 0;
-    if(!number)
-    {
-        str[0] = '0';
-        str[1] = '\0';
-        return;
-    }
-
-    if(number < 0)
-    {
-        str[0] = '-';
-        begin++;
-        number = ~(number)+1;
-    }
-    
-    char nums[256] = {};
-    
-    int index = -1;
-
-    while(number)
-    {
-        index++;
-        nums[index] = "0123456789ABCDEF"[number % radix];
-        number /= radix;
-    }
-
-    for(; index >= 0; index--) {
-        str[begin++] = nums[index];
-    }
-    str[begin] = '\0';    
 }
 
 void kexit(int status)
@@ -106,11 +72,11 @@ void kspanic(const char* message, stack_state_t* state)
     terminal_moveCursor(0,0);
     if(state != NULL) kdump_useStack(state);
     else {
-        
+
     }
-    
+
     logFErr(message);
-    
+
     asm("cli");
     for(;;) asm("pause");
 }
@@ -123,25 +89,25 @@ void kputchar(const char c)
 void kdump_useStack(stack_state_t* state)
 {
     udword_t* esp = (udword_t*)state;
-    
-    kdumpStack((uqword_t*)state, (udword_t)&stack_top);
-    
+
+    //kdumpStack((uqword_t*)state, (udword_t)&stack_top);
+
     //Dump Registers:
     printf("BEGIN DUMP:\n");
     printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n", state->eax, state->ebx, state->ecx, state->edx);
     printf("ESP: %#lx, EBP: %#lx, ESI: %#lx, EDI: %#lx\n", (udword_t)esp-sizeof(stack_state_t), state->ebp, state->esi, state->edi);
     printf("SEGMENT REGS: VALUE (INDEX|TABLE|RPL)\n");
-    printf("CS: %x (%d|%s|%d)\n", state->cs, state->cs >> 4, getTable(state->cs), state->cs & 0x2);
-    printf("DS: %x (%d|%s|%d)\n", state->ds, state->ds >> 4, getTable(state->ds), state->ds & 0x2);
-    printf("SS: %x (%d|%s|%d)\n", state->ss, state->ss >> 4, getTable(state->ss), state->ss & 0x2);
-    printf("ES: %x (%d|%s|%d)\n", state->es, state->es >> 4, getTable(state->es), state->es & 0x2);
-    printf("FS: %x (%d|%s|%d)\n", state->fs, state->fs >> 4, getTable(state->fs), state->fs & 0x2);
-    printf("GS: %x (%d|%s|%d)\n", state->gs, state->gs >> 4, getTable(state->gs), state->gs & 0x2);
+    printf("CS: %x (%d|%s|%d)\n", state->cs, state->cs >> 3, getTable(state->cs), state->cs & 0x3);
+    printf("DS: %x (%d|%s|%d)\n", state->ds, state->ds >> 3, getTable(state->ds), state->ds & 0x3);
+    printf("SS: %x (%d|%s|%d)\n", state->ss, state->ss >> 3, getTable(state->ss), state->ss & 0x3);
+    printf("ES: %x (%d|%s|%d)\n", state->es, state->es >> 3, getTable(state->es), state->es & 0x3);
+    printf("FS: %x (%d|%s|%d)\n", state->fs, state->fs >> 3, getTable(state->fs), state->fs & 0x3);
+    printf("GS: %x (%d|%s|%d)\n", state->gs, state->gs >> 3, getTable(state->gs), state->gs & 0x3);
     printf("EFLAGS: %#lx\n", state->eflags);
     printf("EIP: %#lx\n", state->eip);
     printf("ERR: %#lx\n", state->err_code);
     printf("CR0: %lx, CR2: %lx, CR3: %lx, CR4: %lx\n", readCR0(), readCR2(), readCR3(), readCR4());
-    
+
     //Dump Registers to serial
     char buffer[65];
     //GPRs
@@ -169,7 +135,7 @@ void kdump_useStack(stack_state_t* state)
     serial_writes(COM1, ", EDI: 0x");
     itoa(state->edi, buffer, 16);
     serial_writes(COM1, buffer);
-    
+
     //Segment registers
     serial_writes(COM1, "\nSREGS:\nCS: ");
     itoa(state->cs, buffer, 16);
@@ -186,14 +152,14 @@ void kdump_useStack(stack_state_t* state)
     serial_writes(COM1, "\nGS: ");
     itoa(state->gs, buffer, 16);
     serial_writes(COM1, buffer);
-    
+
     serial_writes(COM1, "\nEFLAGS: 0x");
     itoa(state->eflags, buffer, 16);
     serial_writes(COM1, buffer);
     serial_writes(COM1, "\nEIP: 0x");
     itoa(state->eip, buffer, 16);
     serial_writes(COM1, buffer);
-    
+
     //Control Registers
     serial_writes(COM1, "\nCR0: ");
     itoa(readCR0(), buffer, 16);
@@ -213,7 +179,7 @@ void kdump_useStack(stack_state_t* state)
 void kdump_useRegs(uqword_t rip)
 {
     //This requires the TSS, or some form of saving registers
-    
+
     //Registers
     uint16_t cs =     0;//__readReg(6);
     uint16_t ds =     0;//__readReg(7);
@@ -221,7 +187,7 @@ void kdump_useRegs(uqword_t rip)
     uint16_t fs =     0;//__readReg(9);
     uint16_t gs =     0;//__readReg(10);
     uint32_t eflags = 0;//__readReg(11);
-    
+
     uint32_t eax = 0;//__readReg(12);
     uint32_t ebx = 0;//__readReg(13);
     uint32_t ecx = 0;//__readReg(14);
@@ -230,7 +196,7 @@ void kdump_useRegs(uqword_t rip)
     uint32_t ebp = 0;//__readReg(17);
     uint32_t esi = 0;//__readReg(18);
     uint32_t edi = 0;//__readReg(19);
-    
+
     //Dump Registers:
     printf("BEGIN DUMP:\n");
     printf("REGS: EAX: %#lx, EBX: %#lx, ECX: %#lx, EDX: %#lx\n", eax, ebx, ecx, edx);
@@ -244,7 +210,7 @@ void kdump_useRegs(uqword_t rip)
     printf("EFLAGS: %#lx\n", eflags);
     printf("EIP: %#lx\n", (udword_t)rip);
     printf("CR0: %lx, CR2: %lx, CR3: %lx, CR4: %lx\n", readCR0(), readCR2(), readCR3(), readCR4());
-    kdumpStack((uqword_t*)esp, (udword_t)&stack_top);
+    //kdumpStack((uqword_t*)esp, (udword_t)&stack_top);
 }
 
 void kdumpStack(uqword_t* rsp, udword_t ebp)
@@ -252,6 +218,8 @@ void kdumpStack(uqword_t* rsp, udword_t ebp)
     char buffer[512];
     udword_t* esp = (udword_t*) rsp;
     ubyte_t formatting = 0;
+    printf("\n%lx, %lx\n", esp, ebp);
+    asm("hlt");
     for(udword_t* ind = esp; ((udword_t)ind) < ebp; ind++)
     {
         printf("%#lx ", *ind);
@@ -261,12 +229,12 @@ void kdumpStack(uqword_t* rsp, udword_t ebp)
             putchar('\n');
             serial_writechar(COM1, '\n');
         }
-        
+
         itoa(*ind, buffer, 16);
         serial_writes(COM1, buffer);
         serial_writes(COM1, ", ");
     }
-    
+
     putchar('\n');
     serial_writechar(COM1, '\n');
 }

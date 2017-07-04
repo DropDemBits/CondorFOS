@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2017 DropDemBits <r3usrlnd@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <condor.h>
 
 #ifndef _ATA_H
@@ -31,16 +48,16 @@ typedef struct _ATAInfo {
 	uword_t scsi_set : 5;
 	uword_t reserved1 : 1;
 	uword_t ata_device : 2;
-	
+
 	uword_t reserved2[8];
-	
+
 	char serial_num[20];
 	uword_t reserved3[3];
 	char firmware_rev[8];
 	char model_num[40];
-	
+
 	uword_t reserved4[2];
-	
+
 	//Capabilities
 	uword_t vendor_specifics0 : 8;
 	uword_t dma_support : 1;
@@ -51,7 +68,7 @@ typedef struct _ATAInfo {
 	uword_t overlap_op : 1;
 	uword_t command_queue_support : 1;
 	uword_t interleaved_dma_support : 1;
-	
+
 	uword_t reserved5;
 	uword_t vendor_specifics1 : 8;
 	uword_t pio_transfer_mode : 1;
@@ -60,11 +77,11 @@ typedef struct _ATAInfo {
 	uword_t fields_64_70_valid : 1;
 	uword_t field_88_valid : 1;
 	uword_t reserved6 : 13;
-	
+
 	uword_t reserved7[8];
-	
+
     //Can't be bothered to do packet only udma
-    
+
 	//MDMA
 	uword_t mdma0_support : 1;
 	uword_t mdma1_support : 1;
@@ -73,11 +90,11 @@ typedef struct _ATAInfo {
 	uword_t mdma0_select : 1;
 	uword_t mdma1_select : 1;
 	uword_t mdma2_select : 1;
-	
+
 	uword_t reserved9 : 5;
-	
+
 	uword_t apio_mode_support : 8;
-	
+
 	uword_t vendor_specifics2 : 8;
 	uword_t min_mdma_cycle_time;
 	uword_t rec_mdma_cycle_time;
@@ -86,20 +103,20 @@ typedef struct _ATAInfo {
 	uword_t reserved10[2];
 	uword_t release_response_time;
 	uword_t bsy_clear_time;
-	
+
 	uword_t reserved11[2];
-	
+
 	//Queue Depth
 	uword_t max_queue_depth : 5;
 	uword_t reserved12 : 11;
-	
+
 	uword_t reserved13[3];
-	
+
 	//ATA Support
 	uword_t reserved14 : 1;
 	uword_t major_version : 15;
 	uword_t minor_version;
-	
+
 	//Command set support
 	uword_t smart_support : 1;
 	uword_t secure_mode_support : 1;
@@ -123,12 +140,12 @@ typedef struct _ATAInfo {
 	uword_t reserved16 : 9;
 	uword_t one0 : 1;
 	uword_t zero0 : 1;
-	
+
 	//Command set/feature support extension
 	uword_t reserved17 : 14;
 	uword_t one1 : 1;
 	uword_t zero1 : 1;
-	
+
 	//Command set/Feature enable
 	uword_t smart_enabled : 1;
 	uword_t secure_mode_enabled : 1;
@@ -152,12 +169,12 @@ typedef struct _ATAInfo {
 	uword_t reserved19 : 9;
 	uword_t one4 : 1;
 	uword_t zero4 : 1;
-	
+
 	//Command set/feature support enabled
 	uword_t reserved20 : 14;
 	uword_t one5 : 1;
 	uword_t zero5 : 1;
-	
+
 	//UDMA
 	uword_t udma0_support : 1;
 	uword_t udma1_support : 1;
@@ -176,10 +193,10 @@ typedef struct _ATAInfo {
 	uword_t udma6_selected : 1;
     uword_t reserved22 : 1;
 	uword_t reserved23[37];
-	
+
 	uword_t rm_media_status_notify_support : 2;
 	uword_t reserved24 : 14;
-	
+
 	//Security Status
 	uword_t security_support : 1;
 	uword_t security_enable : 1;
@@ -190,7 +207,7 @@ typedef struct _ATAInfo {
 	uword_t reserved25 : 2;
 	uword_t security_level : 1;
 	uword_t reserved26 : 7;
-	
+
 	uword_t vendor_specifics3[30];
 	uword_t reserved27[95];
 } ATAInfo;
@@ -214,7 +231,7 @@ typedef struct _ATAInfo {
 #define ATA_DEVICE_CONTROL ATA_STATUS_ALT
 
 //ATA Commands
-    
+
 //SCSI/ATAPI Commands
 #define ATAPI_READ_6 0x08
 #define ATAPI_READ_10 0x28

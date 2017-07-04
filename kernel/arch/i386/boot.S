@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2017 DropDemBits <r3usrlnd@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 # Multiboot header
 .set FLAGS,    0x3
 .set MAGIC,    0x1BADB002
@@ -89,18 +106,18 @@ idtr:
 .type _start, @function
 _start:
 	cli
-        
+
     # Preserve EAX and EBX
 	movl %ebx, 0x00000500
 	movl %eax, 0x00000504
-    
+
     # Check for SSE & SSE2
     movl $0x1, %eax
     cpuid
-    
+
     test $(1<<26), %edx
     jz .no_sse
-    
+
     # Go Ahead and setup SSE
     movl %cr0, %eax
     andl $(~4), %eax
@@ -110,12 +127,12 @@ _start:
     movl %cr4, %eax
     orl $0x600, %eax
     movl %eax, %cr4
-    
+
     movb $0x1, (sse2_support - KERNEL_VIRTUAL_BASE)
-    
+
 .no_sse:
     # Initialize paging
-    
+
     # Setup registers
     xor %esi, %esi
     movl $(pt0_start - KERNEL_VIRTUAL_BASE), %edi
@@ -123,7 +140,7 @@ _start:
 
 .Lbegin_paging:
     movl %esi, %edx
-    
+
     cmpl $(kernel_end - KERNEL_VIRTUAL_BASE + 0x1000), %esi
     jge .Ldone
     cmpl $(kernel_start - KERNEL_VIRTUAL_BASE), %esi
@@ -134,10 +151,10 @@ _start:
 .Lro:
     orl $0x1, %edx
     jmp .Lprep
-    
+
 .Lrw:
     orl $0x3, %edx
-.Lprep: 
+.Lprep:
     movl %edx, (%edi)
     # Prepare for next cycle
     addl $0x4, %edi
@@ -151,11 +168,11 @@ _start:
     movl $(pt0_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 768*4
     movl $(pt1_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 769*4
     movl $(pd_start - KERNEL_VIRTUAL_BASE + 0x3), pd_start - KERNEL_VIRTUAL_BASE + 0xffc
-    
+
     # Load CR3
     movl $(pd_start - KERNEL_VIRTUAL_BASE), %edi
     movl %edi, %cr3
-        
+
     # Enable all goodies (pse, pge)
     movl %cr4, %edx
     orl $0x90, %edx
@@ -165,10 +182,10 @@ _start:
     movl %cr0, %edx
     orl $0x80010000, %edx
     movl %edx, %cr0
-        
+
     lea .LtoHigher, %eax
     jmp *%eax
-        
+
 .LtoHigher:
 
     # Disable identity paging
@@ -199,11 +216,11 @@ _start:
 	call idt_init
 
 	lidt (idtr)
-    
+
     # Setup TSS
     movl $tss_descriptor, %edi
     movl $tss_start, %eax
-    
+
     movw %ax, 2(%edi)
     shr $16, %eax
     movb %al, 4(%edi)
@@ -213,18 +230,18 @@ _start:
     movw $0x10, 8(%edi)
     movl %esp, 4(%edi)
     movw $0x68, 102(%edi)
-    
+
     # Load TSS
     //xchg %bx, %bx
     movw $0x28, %ax
     ltr %ax
-    
+
     # Restore EAX and EBX
     movl 0xC0000500, %ebx
 	movl 0xC0000504, %eax
-        
+
     orl $KERNEL_VIRTUAL_BASE, %ebx
-        
+
 	# Before anything interactive, init kernel
 	# Also push multiboot stuff
 	push %eax # Multiboot magic thing
@@ -236,5 +253,5 @@ _start:
     cli
 	hlt
 	jmp .hang
-        
+
 .size _start, . - _start

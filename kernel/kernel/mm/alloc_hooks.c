@@ -1,6 +1,3 @@
-#include <kernel/vmm.h>
-#include <kernel/pmm.h>
-
 /*
  * Copyright (C) 2017 DropDemBits <r3usrlnd@gmail.com>
  *
@@ -21,6 +18,9 @@
 /**
  * alloc_hooks.c: Hooks for the liballoc allocator
  */
+ #include <kernel/vmm.h>
+ #include <kernel/pmm.h>
+
 #define HEAP_START 0xD0000000
 
 static linear_addr_t* brk_base = (linear_addr_t*) (HEAP_START);
@@ -40,15 +40,15 @@ static void* psbrk(udword_t length, ubyte_t reduce)
         // Step1: Move Limit
         linear_addr_t* prev_limit = brk_limit;
         brk_limit += (length << BLOCK_BITS);
-    
+
         if(brk_limit >= brk_hardLimit) return (void*)0xFFFFFFFF;
-    
+
         // Step2: Allocate Pages
         for(linear_addr_t* current_page = prev_limit; current_page < brk_limit; current_page += BLOCK_SIZE)
         {
             vmm_map_address(current_page, pmalloc(1), PAGE_PRESENT | PAGE_RW);
         }
-        
+
         // Step3: Return beginning of space
         return (void*) prev_limit;
     }
@@ -57,15 +57,15 @@ static void* psbrk(udword_t length, ubyte_t reduce)
         // Step1: Move Limit
         linear_addr_t* prev_limit = brk_limit;
         brk_limit -= (length << BLOCK_BITS);
-        
+
         if(brk_limit >= brk_hardLimit) return (void*)0xFFFFFFFF;
-    
+
         // Step2: Allocate Pages
         for(linear_addr_t* current_page = prev_limit; current_page > brk_limit; current_page -= BLOCK_SIZE)
         {
             vmm_unmap_address(current_page);
         }
-        
+
         // Step3: Return beginning of space
         return NULL;
     } else return (void*) 0xFFFFFFFF;
@@ -100,8 +100,8 @@ int liballoc_free(void* addr, size_t length)
         vmm_map_address(brk_base, pmalloc(1), PAGE_PRESENT | PAGE_RW);
         has_mapped = 1;
     }
-    
+
     UNUSED(addr);
-    
+
     return (linear_addr_t)psbrk(length, 1) != 0xFFFFFFFF;
 }

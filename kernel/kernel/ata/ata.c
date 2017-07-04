@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2017 DropDemBits <r3usrlnd@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <stdio.h>
 #include <string.h>
 
@@ -55,7 +72,7 @@ void setupDevice(uword_t device)
 {
     ATAInfo* data = kmalloc(256*16);
     uword_t* dataArray = (uword_t*)data;
-    
+
     if(initDevice(device, data) != NULL)
     {
         deviceType[device].lba_support = data->lba_support << 4;
@@ -65,7 +82,7 @@ void setupDevice(uword_t device)
         deviceType[device].mdma_support = data->mdma0_support+data->mdma1_support+data->mdma2_support;
         deviceType[device].lba_48_support = (dataArray[83] >> 10) & 0x1;
     }
-    
+
     kfree(data);
 }
 
@@ -73,15 +90,15 @@ void* initDevice(uword_t device, void* destination)
 {
     uword_t base = switchDevice(device);
     //ubyte_t slav = device & 0x1;
-    
+
     if(inb(base+ATA_STATUS) == 0xFF) return NULL;
-    
+
 	//outb(base+ATA_DEVICE_SEL, 0xA0 | slav << 4);
 	inw(base+ATA_STATUS);
 	inw(base+ATA_STATUS);
 	inw(base+ATA_STATUS);
 	inw(base+ATA_STATUS);
-    
+
     //Clear nIEN, HOB and SRST
     outb(base+ATA_DEVICE_CONTROL, 0x00);
 	outw(base+ATA_SECT_COUNT, 0x00);
@@ -90,9 +107,9 @@ void* initDevice(uword_t device, void* destination)
 	outw(base+ATA_LBAHI, 0x00);
 	outb(base+ATA_COMMAND, 0xEC);
 	if(!inb(base+ATA_STATUS)) return NULL;
-    
+
     deviceType[device].interface_type = detectDriveType(base);
-    
+
 	while(inb(base+ATA_STATUS) & 0x80)
     {
         ubyte_t drvType = detectDriveType(base);
@@ -101,9 +118,9 @@ void* initDevice(uword_t device, void* destination)
         asm("pause");
     }
     while(!(inb(base+ATA_STATUS) & 0x9)) asm("pause");
-    
+
 	if(inb(base+ATA_STATUS) & 1) return initDevice_ATAPI(base, destination);
-    
+
 	return getDeviceData(base, destination);
 }
 
@@ -111,15 +128,15 @@ void* initDevice_ATAPI(uword_t base, void* destination)
 {
     //Assume that device has been selected
 	outb(base+ATA_COMMAND, 0xA1);
-    
+
     while(inb(base+ATA_STATUS) & 0x80)
     {
         asm("pause");
     }
     while(!(inb(base+ATA_STATUS) & 0x9)) asm("pause");
-    
+
 	if(inb(base+ATA_STATUS) & 1) return NULL;
-    
+
 	return getDeviceData(base, destination);
 }
 
@@ -127,7 +144,7 @@ int detectDriveType(int device)
 {
 	int cylMid = inb(device+ATA_LBAMI);
 	int cylHigh = inb(device+ATA_LBAHI);
-	
+
 	if(cylMid == 0x14 && cylHigh == 0xEB) return ATA_TYPE_ATAPI;
 	if(cylMid == 0x69 && cylHigh == 0x96) return ATA_TYPE_SATAPI;
 	if(cylMid == 0x3c && cylHigh == 0xc3) return ATA_TYPE_SATA;
@@ -138,7 +155,7 @@ int detectDriveType(int device)
 uword_t switchDevice(int device)
 {
     if(device == ATA_DEVICE_INVALID) return 0;
-    
+
     uword_t base = 0;
     if((device & 0xe) == ATA_DEVICE_0) base = ATA_IO_BASE_0;
     if((device & 0xe) == ATA_DEVICE_2) base = ATA_IO_BASE_1;
@@ -155,10 +172,10 @@ uword_t switchDevice(int device)
 void* getDeviceData(uword_t base, void* destination)
 {
     uword_t* buffer = (uword_t*) destination;
-    
+
 	for(uword_t index = 0; index < 256; index++)
 		buffer[index] = inw(base);
-	
+
     return buffer;
 }
 
@@ -173,16 +190,16 @@ void* atapi_sendCommand(uword_t device, ubyte_t command[], ubyte_t command_lengt
     uword_t base = switchDevice(device);
     if(!base) return ptr;
     uword_t *data = ptr;
-    
+
     outb(base+ATA_FEATURES, 0x00);
-    
+
     //Begin Transaction
     outb(base+ATA_BYTELO, 0x00);
     outb(base+ATA_BYTEHI, 0x01);
     outb(base+ATA_COMMAND, 0xA0);
-    
+
     while(inb(base+ATA_STATUS_ALT) & 0x80 && !(inb(base+ATA_STATUS_ALT) & 0x08)) asm("pause");
-    
+
     outw(base+ATA_DATA, command[0] | command[1] << 8);
     outw(base+ATA_DATA, command[2] | command[3] << 8);
     outw(base+ATA_DATA, command[4] | command[5] << 8);
@@ -210,43 +227,43 @@ void* atapi_sendCommand(uword_t device, ubyte_t command[], ubyte_t command_lengt
             outw(base+ATA_DATA, command[30] | command[31] << 8);
             break;
     }
-    
+
     wait:
     waitForIRQ();
-    
+
     uword_t word_count = (inb(base+ATA_BYTELO) | (inb(base+ATA_BYTEHI) << 8)) >> 1;
     uword_t index = 0;
-    
+
     //Make sure CHK/ERR bit is really what it is
     tryAgain:
     inb(base+ATA_STATUS_ALT);
     inb(base+ATA_STATUS_ALT);
     inb(base+ATA_STATUS_ALT);
     inb(base+ATA_STATUS_ALT);
-    
+
     ubyte_t status = 0;
-    
+
     for(uword_t words = 0; words < word_count && !((status = inb(base+ATA_STATUS_ALT)) & 0x1) && (inb(base+ATA_STATUS_ALT) & 0x08); words++, index++) {
         if(atapi_getCommandType(command[0]) == ATA_COMMAND_TYPE_READ) data[index] = inw(base+ATA_DATA);
         else if(atapi_getCommandType(command[0]) == ATA_COMMAND_TYPE_WRITE) outw(base+ATA_DATA, data[index]);
     }
-    
+
     if(status & 0x1) return ptr;
-    
+
     waitForIRQ();
-    
+
     if(inb(base+ATA_STATUS_ALT) & 0x08) {
         waitForIRQ();
         goto tryAgain;
     }
-    
+
     blocked = 0;
     return ptr;
 }
 
 void waitForIRQ()
 {
-    volatile uword_t timeout = 0; 
+    volatile uword_t timeout = 0;
     shouldBlock = 1;
     //TODO: Make 101% Cross Arch Compatible
     asm("pushf//sti");
@@ -263,15 +280,15 @@ void* atapi_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void
     if(deviceType[device].interface_type == ATA_TYPE_INVALID || deviceType[device].interface_type & 0x1) return destination;
     if(lba > 0xFFFFFFFF) return destination;
     ubyte_t command[] = {ATAPI_READ_12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    
+
     command[9] = sector_count;
     command[2] = (lba >> 18) & 0xFF;
     command[3] = (lba >> 10) & 0xFF;
     command[4] = (lba >> 8) & 0xFF;
     command[5] = (lba >> 0) & 0xFF;
-    
+
     atapi_sendCommand(device, command, LENGTH_OF(command), destination);
-    
+
     return destination;
 }
 
@@ -281,15 +298,15 @@ void* atapi_writeSectors(uword_t device, uqword_t lba, ubyte_t sector_count, voi
     if(deviceType[device].interface_type == ATA_TYPE_INVALID || deviceType[device].interface_type & 0x1) return destination;
     if(lba > 0xFFFFFFFF) return destination;
     ubyte_t command[] = {ATAPI_WRITE_12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    
+
     command[9] = sector_count;
     command[2] = (lba >> 18) & 0xFF;
     command[3] = (lba >> 10) & 0xFF;
     command[4] = (lba >> 8) & 0xFF;
     command[5] = (lba >> 0) & 0xFF;
-    
+
     atapi_sendCommand(device, command, LENGTH_OF(command), destination);
-    
+
     return destination;
 }
 
@@ -320,7 +337,7 @@ void* ata_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* 
     uword_t base = switchDevice(device);
     uword_t* buffer = (uword_t*) destination;
     if(!base) return NULL;
-    
+
     outb(base+ATA_SECT_COUNT, sector_count);
     if(deviceType[device].lba_48_support) {
         outb(base+ATA_LBALO, (lba >> 24) & 0xFF);
@@ -332,12 +349,12 @@ void* ata_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* 
     outb(base+ATA_LBAHI, (lba >> 16) & 0xFF);
     outb(base+ATA_DEVICE_SEL, (deviceType[device].lba_48_support ? 0 : (lba >> 24) & 0xF) | ((device & 1)<<5) | (1<<6));
     outb(base+ATA_COMMAND, 0x20 | (deviceType[device].lba_48_support ? 0 : 4));
-    
+
     for(uword_t i = 0; (inb(base+ATA_STATUS) & 0x8); i++)
     {
         buffer[i] = inw(base);
     }
-    
+
     return buffer;
 }
 
@@ -349,14 +366,14 @@ void ata_writeSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* 
     uword_t base = switchDevice(device);
     uword_t* buffer = (uword_t*) source;
     if(!base) return;
-    
+
     outb(base+ATA_SECT_COUNT, sector_count);
     outb(base+ATA_LBALO, (lba >> 0)&0xFF);
     outb(base+ATA_LBAMI, (lba >> 8)&0xFF);
     outb(base+ATA_LBAHI, (lba >> 16)&0xFF);
     outb(base+ATA_DEVICE_SEL, ((lba >> 24)&0xF) | ((device&1)<<5) | (1<<6));
     outb(base+ATA_COMMAND, 0x30);
-    
+
     for(uword_t i = 0; (inb(base+ATA_STATUS) & 0x8); i++)
     {
         outw(base, buffer[i]);

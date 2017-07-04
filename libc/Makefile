@@ -14,15 +14,28 @@ include ./arch/$(TARGET_ARCH)/make.config
 
 OBJ:= $(OBJ) \
 stdio/printf.o \
+stdio/sprintf.o \
+stdio/vprintf.o \
+stdio/vsprintf.o \
 stdio/putchar.o \
 stdio/puts.o \
 stdlib/abort.o \
 stdlib/exit.o \
+stdlib/itoa.o \
+stdlib/ultoa.o \
 string/memcmp.o \
 string/memcpy.o \
 string/memmove.o \
 string/memset.o \
+string/strcmp.o \
+string/strncmp.o \
+string/strcpy.o \
+string/strncpy.o \
+string/stricmp.o \
+string/strnicmp.o \
 string/strlen.o \
+ctype/toupper.o \
+ctype/tolower.o \
 
 LIBK_OBJ:=$(OBJ:.o=.libk.o)
 

@@ -1,11 +1,8 @@
 #include <string.h>
 
-int memcmp(const void* ptr1, const void* ptr2, size_t num)
+int strncmp(const char* str1, const char* str2, size_t num)
 {
-    if(ptr1 == ptr2) return 0;
-    
-    char* str1 = (char*)ptr1;
-    char* str2 = (char*)ptr2;
+    if(str1 == str2) return 0;
     
     char ca, cb;
     do {

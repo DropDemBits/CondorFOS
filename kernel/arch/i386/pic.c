@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2017 DropDemBits <r3usrlnd@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <kernel/pic.h>
 #include <io.h>
 
@@ -7,6 +24,7 @@
 #define PIC2_COMMAND PIC2
 #define PIC1_DATA    PIC1_COMMAND+1
 #define PIC2_DATA    PIC2_COMMAND+1
+#define PIC_READ_ISR 0x0B
 /* Data codes */
 #define PIC_EOI      0x20
 
@@ -23,7 +41,7 @@
 #define ICW4_BUF_MASTER	0x0C	/* Buffered mode/master */
 #define ICW4_SFNM	    0x10	/* Special fully nested */
 
-void pic_init(uint16_t irq0Base, uint16_t irq8Base)
+void pic_init(uint8_t irq0Base, uint8_t irq8Base)
 {
     uint8_t mask1, mask2;
     mask1 = inb(PIC1_DATA);
@@ -60,7 +78,7 @@ void pic_init(uint16_t irq0Base, uint16_t irq8Base)
     outb(PIC2_DATA, mask2);
 }
 
-void pic_ack(uint16_t irq)
+void pic_ack(uint8_t irq)
 {
     if(irq > 15) return;
     //Also notify Slave PIC if irq >= IRQ8
@@ -70,7 +88,7 @@ void pic_ack(uint16_t irq)
     outb(PIC1_COMMAND, PIC_EOI);
 }
 
-void pic_maskIRQ(uint16_t irq)
+void pic_maskIRQ(uint8_t irq)
 {
     if(irq > 15) return;
     uint16_t port = PIC1_DATA;
@@ -82,7 +100,7 @@ void pic_maskIRQ(uint16_t irq)
     outb(port, mask);
 }
 
-void pic_unmaskIRQ(uint16_t irq)
+void pic_unmaskIRQ(uint8_t irq)
 {
     if(irq > 15) return;
     uint16_t port = PIC1_DATA;
@@ -106,4 +124,16 @@ void pic_write(uint32_t reg, uint32_t value)
     if(reg != PIC1_COMMAND && reg != PIC2_COMMAND && reg != PIC1_DATA && reg != PIC2_DATA) return;
     outb(reg, value);
     return;
+}
+
+int pic_checkSpurious(uint8_t irq)
+{
+    outb(PIC1_COMMAND, PIC_READ_ISR);
+    outb(PIC2_COMMAND, PIC_READ_ISR);
+    if(irq == 7 && (inb(PIC1_COMMAND) & 0x80) == 0) return 1;
+    else if(irq == 15 && (inb(PIC2_COMMAND) & 0x80) == 0) {
+        outb(PIC1_COMMAND, PIC_EOI);
+        return 1;
+    }
+    return 0;
 }

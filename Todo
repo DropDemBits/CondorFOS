@@ -1,0 +1,16 @@
+Todo:
+-Multiple memory allocation methods ✓
+-Basic Multithreading:
+ -Launch threads (properly)
+-Simple TUI
+-PCI Interface
+-Basic Multitasking:
+ -Launch processes into seperate address spaces
+ -IPC
+-Networking
+-Userland
+-Basic ACPI
+-Abstraction fixing
+...
+-Basic GUI Framework
+-USB

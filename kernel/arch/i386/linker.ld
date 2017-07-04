@@ -37,6 +37,6 @@ SECTIONS
         *(.comment)
         *(.eh_frame)
     }
-}
 
-kernel_end = .;
+    kernel_end = ALIGN(4K);
+}
