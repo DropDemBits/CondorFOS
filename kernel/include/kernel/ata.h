@@ -16,29 +16,18 @@
  */
 
 #include <condor.h>
+#include <kernel/ata_portio.h>
 
 #ifndef _ATA_H
 #define _ATA_H
 
-//ATA0
-#define ATA_DEVICE_0 0x0
-#define ATA_DEVICE_1 0x1
-//ATA1
-#define ATA_DEVICE_2 0x2
-#define ATA_DEVICE_3 0x3
-//ATA2
-#define ATA_DEVICE_4 0x4
-#define ATA_DEVICE_5 0x5
-//ATA3
-#define ATA_DEVICE_6 0x6
-#define ATA_DEVICE_7 0x7
-#define ATA_DEVICE_INVALID 0xFF
+#define ATA_DEVICE_INVALID 0xFFFF
 
 #define ATA_COMMAND_TYPE_READ 0
 #define ATA_COMMAND_TYPE_WRITE 1
 #define ATA_COMMAND_TYPE_MISC 2
 
-typedef struct _ATAInfo {
+typedef struct {
 	//Feature bits
 	uword_t command_size : 2;
     uword_t incomplete : 1;
@@ -62,7 +51,7 @@ typedef struct _ATAInfo {
 	uword_t vendor_specifics0 : 8;
 	uword_t dma_support : 1;
 	uword_t lba_support : 1;
-	uword_t iordy_disabled : 1;
+	uword_t iordy_disable : 1;
 	uword_t iordy_support : 1;
 	uword_t ata_srst_required : 1;
 	uword_t overlap_op : 1;
@@ -106,13 +95,17 @@ typedef struct _ATAInfo {
 
 	uword_t reserved11[2];
 
+	uword_t time_packet_recieve_to_bus_release;
+	uword_t time_service_to_bsy_clear;
+	uword_t reserved_packet[2];
+
 	//Queue Depth
 	uword_t max_queue_depth : 5;
 	uword_t reserved12 : 11;
 
-	uword_t reserved13[3];
+	uword_t reserved13[4];
 
-	//ATA Support
+	//ATA Version
 	uword_t reserved14 : 1;
 	uword_t major_version : 15;
 	uword_t minor_version;
@@ -134,10 +127,21 @@ typedef struct _ATAInfo {
 	uword_t read_buffer_support : 1;
 	uword_t nop_support : 1;
 	uword_t obsolete1 : 1;
+
 	uword_t download_microcode_support : 1;
-	uword_t reserved15 : 3;
+	uword_t rw_dma_queued_support : 1;
+	uword_t cfa_feature_set_support : 1;
+	uword_t apm_feature_set_support : 1;
 	uword_t rm_media_notify_support : 1;
-	uword_t reserved16 : 9;
+	uword_t powerup_standby_feature_set_support : 1;
+	uword_t set_features_to_spinup : 1;
+	uword_t reserved16 : 1;
+	uword_t set_max_extension_support : 1;
+	uword_t automatic_am_feature_set_support : 1;
+	uword_t lba48_feature_set_support : 1;
+	uword_t device_config_overlay_feature_set_support : 1;
+	uword_t flush_cache_command_support : 1;
+	uword_t flush_cache_ext_command_support : 1;
 	uword_t one0 : 1;
 	uword_t zero0 : 1;
 
@@ -210,9 +214,9 @@ typedef struct _ATAInfo {
 
 	uword_t vendor_specifics3[30];
 	uword_t reserved27[95];
-} ATAInfo;
+} ata_info_t;
 
-//Port Offsets
+/* Port Offsets */
 #define ATA_DATA 0
 #define ATA_FEATURES 1
 #define ATA_SECT_COUNT 2
@@ -223,32 +227,55 @@ typedef struct _ATAInfo {
 #define ATA_COMMAND 7
 #define ATA_STATUS_ALT 0x206
 
-//Alternate Names
+/* Alternate Names */
 #define ATA_INT_REASON ATA_FEATURES
 #define ATA_BYTELO ATA_LBAMI
 #define ATA_BYTEHI ATA_LBAHI
 #define ATA_STATUS ATA_COMMAND
 #define ATA_DEVICE_CONTROL ATA_STATUS_ALT
 
+/* 65535 ATA Controllers should be enough for anybody */
+#define ATA_MAX_DEVICES 65535
+
+typedef enum {
+	NONE,
+	ATA,
+	ATAPI,
+	SATA,
+	SATAPI,
+} ata_interface_type_t;
+
 //ATA Commands
+enum {
+	ATA_IDENTIFY_DEVICE = 0xEC,
+} ATA_COMMANDS;
 
 //SCSI/ATAPI Commands
-#define ATAPI_READ_6 0x08
-#define ATAPI_READ_10 0x28
-#define ATAPI_READ_12 0xA8
-#define ATAPI_READ_16 0x88
-#define ATAPI_WRITE_6 0x0A
-#define ATAPI_WRITE_10 0x2A
-#define ATAPI_WRITE_12 0xAA
-#define ATAPI_WRITE_16 0x8A
+enum {
+	ATAPI_IDENTIFY_PACKET_DEVICE = 0xA1,
+	ATAPI_READ_6=0x08,
+	ATAPI_READ_10=0x28,
+	ATAPI_READ_12=0xA8,
+	ATAPI_READ_16=0x88,
+	ATAPI_WRITE_6=0x0A,
+	ATAPI_WRITE_10=0x2A,
+	ATAPI_WRITE_12=0xAA,
+	ATAPI_WRITE_16=0x8A,
+} ATAPI_COMMANDS;
 
 inline ubyte_t atapi_getCommandType(ubyte_t command) {
-    if(command == ATAPI_READ_6 || command == ATAPI_READ_10 || command == ATAPI_READ_12 || command == ATAPI_READ_16) return ATA_COMMAND_TYPE_READ;
-    if(command == ATAPI_WRITE_6 || command == ATAPI_WRITE_10 || command == ATAPI_WRITE_12 || command == ATAPI_WRITE_16) return ATA_COMMAND_TYPE_WRITE;
+    if((command & ATAPI_READ_6) == ATAPI_READ_6) return ATA_COMMAND_TYPE_READ;
+    if((command & ATAPI_WRITE_6) == ATAPI_WRITE_6) return ATA_COMMAND_TYPE_WRITE;
     return ATA_COMMAND_TYPE_MISC;
 }
 
-void ata_init();
+/*
+ * Initializes an IDE controller
+ * @param base_port Base port of controller
+ * @param alt_port Alternate status port of controller
+ * @param irq IRQ used for controller
+ */
+uword_t ide_init(uword_t base_port, uword_t alt_port, ubyte_t irq);
 
 void* ata_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* destination);
 

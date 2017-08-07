@@ -83,6 +83,26 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     logNorm("Initializing Core VADDM\n");
     vaddm_init();
 
+    logNorm("Initializing Timer\n");
+    hal_initTimer();
+
+    logNorm("Initializing Device Controller\n");
+    hal_initController();
+
+    logNorm("Initializing keyboard\n");
+    keyboard_init();
+
+    uword_t ide_dev0 = ATA_DEVICE_INVALID, ide_dev1 = ATA_DEVICE_INVALID;
+
+    ide_dev0 = ide_init(0x1F0, 0x3F6, IRQ14);
+    ide_dev1 = ide_init(0x170, 0x376, IRQ15);
+
+    if(ide_dev0 != ATA_DEVICE_INVALID) printf("IDE Device on Primary Bus (dev_id: %d)\n", ide_dev0);
+    if(ide_dev1 != ATA_DEVICE_INVALID) printf("IDE Device on Secondary Bus (dev_id: %d)\n", ide_dev1);
+
+    linear_addr_t* data = kmalloc(256 * 16 * 4);
+    if(ata_readSectors(ide_dev1, 0, 3, data) != NULL) printf("This is data: %s\n", data);
+
     if(info_struct->flags & MULTIBOOT_INFO_BOOT_LOADER_NAME) {
         logInfo("Loaded by Multiboot loader ");
         printf("%s\n", info_struct->boot_loader_name + KERNEL_BASE);
