@@ -1,12 +1,14 @@
-Todo:
+Todo (in no order):
 -Multiple memory allocation methods ✓
--Basic Multithreading:
- -Launch threads (properly)
--Simple TUI
--PCI Interface
 -Basic Multitasking:
+ -Launch threads (properly)
  -Launch processes into seperate address spaces
  -IPC
+-Simple TUI
+-PCI Interface
+-Mutex
+ -Using spinlocks
+ -Other methods?
 -Networking
 -Userland
 -Basic ACPI

@@ -131,7 +131,7 @@ physical_addr_t* vmm_get_physical_addr(linear_addr_t* laddr)
 
 void vmm_init()
 {
-    idt_addISR(14, (udword_t)pf_handler);
+    idt_addISR(14, pf_handler);
 }
 
 void vmm_switch_page_base(physical_addr_t page_directory_base)
@@ -253,7 +253,7 @@ void vaddm_init()
 
     if(vmm_get_physical_addr((linear_addr_t*) VADDM_BASE) == 0) {
         for(int i = 0; i <= 33; i++) {
-            vmm_map_address((linear_addr_t*) (VADDM_BASE + (i << 12)), pmalloc(1), PAGE_PRESENT | PAGE_RW);
+            vmm_map_address((linear_addr_t*) (VADDM_BASE + (i << 12)), pmalloc(), PAGE_PRESENT | PAGE_RW);
         }
 
         vmm_map_address((linear_addr_t*) (VADDM_BASE + 0x22000), (physical_addr_t*) 0x0000, PAGE_PRESENT);

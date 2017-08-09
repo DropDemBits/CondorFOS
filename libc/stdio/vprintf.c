@@ -16,11 +16,11 @@ int vprintf(const char* format, va_list params)
 {
     size_t amount;
     bool rejected_formater = false;
+    bool pound = false;
     int length = 0;
-    uint8_t pound = 0;
     int written = 0;
     char buffer[65];
-    
+
     while(*format)
     {
         if(*format != '%')
@@ -51,7 +51,7 @@ int vprintf(const char* format, va_list params)
         //Format parsing
         if(*format == '#')
         {
-            pound = 1;
+            pound = true;
             format++;
         }
 
@@ -85,7 +85,7 @@ int vprintf(const char* format, va_list params)
             if(length == 1) number = va_arg(params, int32_t);
             else if(length == 2) number = va_arg(params, int64_t);
             else number = va_arg(params, int);
-            
+
             amount += strlen(itoa(number, buffer, 10));
             print(buffer, strlen(buffer));
             format++;
@@ -110,7 +110,8 @@ int vprintf(const char* format, va_list params)
                 number = va_arg(params, uint32_t);
             else if(length == 2)
                 number = va_arg(params, uint32_t);
-            
+            if(pound) print("0x", strlen("0x"));
+
             amount += strlen(ultoa(number, buffer, 16));
             for(size_t i = 0; i < strlen(buffer); i++)
                 buffer[i] = tolower(buffer[i]);
@@ -125,9 +126,9 @@ int vprintf(const char* format, va_list params)
                 number = va_arg(params, uint32_t);
             else if(length == 2)
                 number = va_arg(params, uint32_t);
+                
+            if(pound) print("0x", strlen("0x"));
 
-            if(pound) print("0x", 2);
-            
             amount += strlen(ultoa(number, buffer, 16));
             print(buffer, strlen(buffer));
             format++;
@@ -145,6 +146,6 @@ int vprintf(const char* format, va_list params)
         amount = 0;
         pound = false;
     }
-    
+
     return written;
 }

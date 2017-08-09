@@ -44,34 +44,34 @@ static void detectDevice(int device)
     ubyte_t byte0 = 0;
     ubyte_t byte1 = 0;
     ubyte_t byte0_store = 0;
-    
+
     ps2_sendDataTo(device, 0xF5);
     ps2_sendDataTo(device, 0xF2);
-    
+
     while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF) {
         watch_dog++;
         asm("pause");
     }
     byte0_store = ps2_readDataFrom(device);
     watch_dog = 0;
-    
+
     while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF) {
         watch_dog++;
         asm("pause");
     }
     byte0 = ps2_readDataFrom(device);
-    
+
     if(byte0_store != byte0 && byte0_store != PS2_ACK) byte0 = byte0_store;
-    
+
     watch_dog = 0;
     while(!(inb(PS2_STT_CMD) & 0x01) && watch_dog < 0xFFFF) {
         watch_dog++;
         asm("pause");
     }
     byte1 = ps2_readDataFrom(device);
-    
+
     while(inb(PS2_STT_CMD) & 0x1) inb(PS2_DATA);
-    
+
     if(byte0 == 0x00 && byte1 == 0x00) devType[device] = DEV_TYPE_PS2_MOUSE;
     else if(byte0 == 0x03 && byte1 == 0x03) devType[device] = DEV_TYPE_MOUSE_SCR;
     else if(byte0 == 0x04 && byte1 == 0x04) devType[device] = DEV_TYPE_MOUSE_5B;
@@ -91,7 +91,7 @@ ubyte_t ps2_init(void)
     ubyte_t config = 0;
     ubyte_t test_resp = 0;
     ubyte_t check_resp = 0;
-    
+
     //Disable devices
     outb(PS2_STT_CMD, 0xAD);
     outb(PS2_STT_CMD, 0xA7);
@@ -120,7 +120,7 @@ ubyte_t ps2_init(void)
         if(test_resp == 0xFC) return RET_FAIL;
         else {
             //Some undocumented response, report it
-            printf("%#x\n", test_resp);
+            printf("%#x, ", test_resp & 0xFF);
             return RET_FAIL | RET_NODEV;
         }
     }
@@ -159,7 +159,7 @@ ubyte_t ps2_init(void)
     //Enable and reset devices
     outb(PS2_STT_CMD, 0x20);
     config = inb(PS2_DATA);
-    
+
     //Port1
     if(usable_channels & 0x1) {
         outb(PS2_STT_CMD, 0xAE);
@@ -176,31 +176,31 @@ ubyte_t ps2_init(void)
         if(waitACK()) usable_channels &= ~0x02;
         else config |= 0x02;
     }
-    
+
     if(!usable_channels) return RET_FAIL | RET_NODEV;
 
     detectDevice(DEV1);
     if(hasDEV2) detectDevice(DEV2);
-    
+
     if(devType[DEV1] == DEV_INV) config &= ~0x01;
     else config &= ~0x10;
-    
+
     if(devType[DEV2] == DEV_INV) config &= ~0x02;
     else config &= ~0x20;
-    
+
     outb(PS2_STT_CMD, 0x60);
     outb(PS2_DATA, config);
-    
+
     outb(PS2_STT_CMD, 0x20);
     printf("PS/2 INFO: (DEVICE1: %d, ", devType[DEV1]);
     printf("DEVICE2: %d, ", devType[DEV2]);
-    printf("CONFIG: %#x), ", inb(PS2_DATA));
-    
+    printf("CONFIG: %x), ", inb(PS2_DATA) & 0xFF);
+
     ps2_clearBuffer();
     return RET_SUCCESS;
 }
 
-void ps2_handleDevice(int device, uqword_t func)
+void ps2_handleDevice(int device, isr_t func)
 {
     if(device == DEV2) {
         if(!hasDEV2 || device == DEV_INV) return;
@@ -266,4 +266,3 @@ int ps2_getDevHID(int hid)
         default: return DEV_INV;
     }
 }
-

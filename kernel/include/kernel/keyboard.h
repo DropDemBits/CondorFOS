@@ -178,6 +178,11 @@
 void keyboard_init(void);
 
 /**
+ * Resets the keyboard interface to a known state
+ */
+void keyboard_resetState();
+
+/**
  * Reads a key from the buffer
  * @return The key from the buffer, or KEY_NONE if the buffer is empty
  */

@@ -50,12 +50,14 @@
 #define IRQ14 IRQ0+14
 #define IRQ15 IRQ0+15
 
+typedef void(*isr_t)(stack_state_t*);
+
 /**
  * Adds an ISR handler
  * @param int_num The interrupt to service
  * @param addr The address to the handler
  */
-void idt_addISR(uint16_t int_num, uint32_t addr);
+void idt_addISR(uint16_t int_num, isr_t addr);
 
 /**
  * Removes an ISR handler

@@ -16,6 +16,7 @@
  */
 
 #include <condor.h>
+#include <kernel/idt.h>
 
 #ifndef _HAL_H_
 #define _HAL_H_
@@ -60,15 +61,9 @@ void hal_initTimer();
 
 void timer_init();
 
-void timer_createCounter(udword_t frequencey, ubyte_t counter, ubyte_t mode);
+void timer_createCounter(udword_t frequency, ubyte_t counter, ubyte_t mode);
 
-udword_t timer_getTicks();
-
-udword_t timer_getMillis();
-
-void timer_sleep(udword_t millis);
-
-void timer_tsleep(udword_t ticks);
+void timer_writeReload(uint16_t value, uint8_t counter);
 
 /**===================================================**\
 |*   Hardware abstraction for the device controllers   *|
@@ -76,7 +71,7 @@ void timer_tsleep(udword_t ticks);
 
 void hal_initController();
 
-void controller_handleDevice(int device, uqword_t func);
+void controller_handleDevice(int device, isr_t func);
 
 int controller_sendDataTo(int device, ubyte_t data);
 

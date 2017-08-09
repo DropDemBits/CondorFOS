@@ -46,7 +46,7 @@ isr\int_num\():
 .macro irq_spurious int_num
 .globl isr\int_num\()
 isr\int_num\():
-    #Check spurious
+    # Check spurious
     push %eax
     push %edx
     push %ecx
@@ -61,6 +61,7 @@ isr\int_num\():
     pop %eax
     jnz fini_isr
 
+    # This IRQ is not spurious, resume as normal
     push $0
     push $\int_num\()
     jmp prep_isr

@@ -21,6 +21,7 @@
 #include <condor.h>
 
 #include <stdio.h>
+#include <string.h>
 #include <kernel/idt.h>
 
 #include "kernel/ps2.h"
@@ -64,6 +65,7 @@ static ubyte_t key_buffer[1024];
 static ubyte_t state = 0;
 
 static ubyte_t status = 0;
+static ubyte_t last_caps_state = KEY_STATE_UP | 0b000;
 keymap mapping_base[LAST_KEY] = DEF_MAPPING;
 
 static void buffer_push(ubyte_t keycode)
@@ -75,8 +77,7 @@ static void buffer_push(ubyte_t keycode)
 
 static ubyte_t buffer_pop()
 {
-    if(buffer_index == 0)
-    {
+    if(buffer_index == 0) {
         buffer_index = 0xFFFF;
         return key_buffer[0];
     }
@@ -88,11 +89,9 @@ ubyte_t keyboard_getKeyState(ubyte_t key)
 {
 	if(key_states[key] != KEY_PAUSE)
 		return key_states[key];
-	else
-	{
+	else {
 		//Pause is immediately released at press, so reflect that
-		if(key_states[KEY_PAUSE] == KEY_STATE_DOWN)
-		{
+		if(key_states[KEY_PAUSE] == KEY_STATE_DOWN) {
 			key_states[KEY_PAUSE] = KEY_STATE_UP;
 			return KEY_STATE_DOWN;
 		}
@@ -104,8 +103,7 @@ void keyboard_isr()
 {
     ubyte_t keycode = controller_readDataFrom(controller_getDevHID(HID_KEYBOARD));
 
-    if(keycode == 0xE0)
-    {
+    if(keycode == 0xE0) {
         if(state & STATE_EXTENDED0)
         {
             if(state & ~STATE_PAUSE) state = 0;
@@ -113,51 +111,45 @@ void keyboard_isr()
         }
         else state |= STATE_EXTENDED0;
     }
-    else if(keycode == 0xE1)
-    {
+    else if(keycode == 0xE1) {
         if(state & STATE_EXTENDED1) state |= STATE_PAUSE;
         else state |= STATE_EXTENDED1;
     }
-    else if(keycode == 0xF0)
-    {
-        if(state & STATE_BREAK)
-        {
+    else if(keycode == 0xF0) {
+        if(state & STATE_BREAK) {
             if(!(state & (STATE_EXTENDED1 | STATE_PAUSE))) state = 0;
             return;
         }
         else state |= STATE_BREAK;
     }
     else {
-        if((state & STATE_EXTENDED1  || state & STATE_BREAK) && state & STATE_PAUSE)
-        {
-            if(keycode == 0x77)
-            {
+        if((state & STATE_EXTENDED1  || state & STATE_BREAK) && state & STATE_PAUSE) {
+            if(keycode == 0x77) {
                 //End of Pause Scancode
                 buffer_push(KEY_PAUSE);
                 key_states[KEY_PAUSE] = KEY_STATE_DOWN;
                 state = 0;
                 return;
             }
-        } else
-        {
+        }
+        else {
             if(state & STATE_EXTENDED1 || state & STATE_PAUSE) return;
+
             // Regular key end
             ubyte_t trans = 0;
-            if(state & STATE_EXTENDED0)
-            {
+            if(state & STATE_EXTENDED0) {
             	trans = translation_mapE0[keycode - 0x11];
-                if(keyboard_getKeyState(trans) == KEY_STATE_DOWN)
-                {
+                if(keyboard_getKeyState(trans) == KEY_STATE_DOWN) {
                 	if(state & STATE_BREAK) key_states[trans] = KEY_STATE_UP;
                 	else key_states[trans] = KEY_STATE_HELD;
                 } else key_states[trans] = KEY_STATE_DOWN;
 
                 if(keyboard_getKeyState(trans) != KEY_STATE_UP) buffer_push(trans);
-            } else
-            {
+            }
+            else {
             	trans = translation_map[keycode];
-                if(keyboard_getKeyState(trans) == KEY_STATE_DOWN)
-                {
+
+                if(keyboard_getKeyState(trans) == KEY_STATE_DOWN) {
                 	if(state & STATE_BREAK) key_states[trans] = KEY_STATE_UP;
                 	else key_states[trans] = KEY_STATE_HELD;
                 } else key_states[trans] = KEY_STATE_DOWN;
@@ -172,8 +164,14 @@ void keyboard_isr()
             else new_status &= ~STATUS_SCROLL_LOCK;
             if(keyboard_getKeyState(KEY_NUM_LOCK) != KEY_STATE_UP) new_status |= STATUS_NUM_LOCK;
             else new_status &= ~STATUS_NUM_LOCK;
-            if(keyboard_getKeyState(KEY_CAPS_LOCK) != KEY_STATE_UP) new_status |= STATUS_CAPS;
-            else new_status &= ~STATUS_CAPS;
+
+            if( keyboard_getKeyState(KEY_CAPS_LOCK) == KEY_STATE_DOWN &&
+                (last_caps_state & 0b011) == KEY_STATE_UP) {
+                new_status ^= STATUS_CAPS;
+            }
+            last_caps_state &= 0b100;
+            last_caps_state |= keyboard_getKeyState(KEY_CAPS_LOCK) & 0x3;
+
             if(keyboard_getKeyState(KEY_LSHIFT) != KEY_STATE_UP || keyboard_getKeyState(KEY_RSHIFT) != KEY_STATE_UP) new_status |= STATUS_SHIFT;
             else new_status &= ~STATUS_SHIFT;
             if(keyboard_getKeyState(KEY_LCTRL) != KEY_STATE_UP || keyboard_getKeyState(KEY_RCTRL) != KEY_STATE_UP) new_status |= STATUS_CTRL;
@@ -182,8 +180,7 @@ void keyboard_isr()
             else new_status &= ~STATUS_ALT;
             if(keyboard_getKeyState(KEY_RALT) != KEY_STATE_UP) new_status |= STATUS_ALTGR;
             else new_status &= ~STATUS_ALTGR;
-            if((new_status & 0xf) != (status & 0xf))
-            {
+            if((new_status & 0xf) != (status & 0xf)) {
                 //TODO: Change KBD LEDS
             }
             status = new_status;
@@ -193,10 +190,21 @@ void keyboard_isr()
 
 void keyboard_init(void)
 {
-    controller_handleDevice(controller_getDevHID(HID_KEYBOARD), (udword_t) keyboard_isr);
+    controller_handleDevice(controller_getDevHID(HID_KEYBOARD), keyboard_isr);
     controller_sendDataTo(controller_getDevHID(HID_KEYBOARD), 0xF0);
     controller_sendDataTo(controller_getDevHID(HID_KEYBOARD), 0x02);
     controller_sendDataTo(controller_getDevHID(HID_KEYBOARD), 0xF4);
+    keyboard_resetState();
+}
+
+void keyboard_resetState()
+{
+    buffer_index = 0;
+    key_buffer[0] = 0;
+    memset(key_states, 0, sizeof(key_states));
+    state = 0;
+    status = 0;
+    last_caps_state = KEY_STATE_UP | 0b000;
 }
 
 ubyte_t keyboard_readKey()

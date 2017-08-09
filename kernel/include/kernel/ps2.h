@@ -23,6 +23,7 @@
  */
 
 #include <condor.h>
+#include <kernel/idt.h>
 
 #ifndef _PS2_H
 #define _PS2_H
@@ -52,7 +53,7 @@
 
 ubyte_t ps2_init(void);
 
-void ps2_handleDevice(int device, uqword_t func);
+void ps2_handleDevice(int device, isr_t func);
 
 int ps2_sendDataTo(int device, ubyte_t data);
 

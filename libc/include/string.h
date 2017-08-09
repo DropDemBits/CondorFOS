@@ -26,7 +26,7 @@ int stricmp(const char* str1, const char* str2, size_t length);
 #endif
 
 #ifdef __cplusplus
-]
+}
 #endif
 
 #endif

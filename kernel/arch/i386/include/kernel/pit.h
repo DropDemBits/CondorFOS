@@ -20,24 +20,35 @@
 #ifndef PIT_H
 #define PIT_H
 
-#if 0
-#define MAIN_FRQ 11931892.0f
-#define MILLI_INTERVAL (int)((float)(MAIN_FRQ/11931892.0f)*1000.0f)
-#else
-#define MAIN_FRQ (1193)
-#define MILLI_INTERVAL (int)((float)(MAIN_FRQ/1193)*1000)
-#endif
+#define MAIN_FRQ (150)
 
 #define PIT_COUNTER0 0x40
 #define PIT_COUNTER1 0x41
 #define PIT_COUNTER2 0x42
 #define PIT_COMMAND  0x43
 
+#define PIT_SELECT_0 0b00000000
+#define PIT_SELECT_1 0b01000000
+#define PIT_SELECT_2 0b10000000
+#define PIT_READBACK 0b11000000
+
+#define PIT_ACCESS_MODE_LATCH 0b00000000
+#define PIT_ACCESS_MODE_LO    0b00010000
+#define PIT_ACCESS_MODE_HI    0b00100000
+#define PIT_ACCESS_MODE_LO_HI 0b00110000
+
+#define PIT_MODE_TRIGGER_ON_TERM_COUNT 0b00000000
+#define PIT_MODE_ONE_SHOT              0b00000010
+#define PIT_MODE_RATE_GENERATOR        0b00000100
+#define PIT_MODE_SQUARE_WAVE_GENERATOR 0b00000110
+#define PIT_MODE_SOFTWARE_STROBE       0b00001000
+#define PIT_MODE_HARDWARE_STROBE       0b00001010
+
+#define PIT_COUNT_BINARY 0b00000000
+#define PIT_COUNT_BCD    0b00000001
+
 void pit_init();
-void pit_createCounter(uint32_t frequencey, uint8_t counter, uint8_t mode);
-uint32_t pit_getTicks();
-uint32_t pit_getMillis();
-void pit_tsleep(uint32_t ticks);
-void pit_sleep(uint32_t millis);
+void pit_createCounter(uint32_t frequency, uint8_t counter, uint8_t mode);
+void pit_writeReload(uint16_t value, uint8_t counter);
 
 #endif

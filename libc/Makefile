@@ -34,8 +34,7 @@ string/strncpy.o \
 string/stricmp.o \
 string/strnicmp.o \
 string/strlen.o \
-ctype/toupper.o \
-ctype/tolower.o \
+ctype/ctype.o \
 
 LIBK_OBJ:=$(OBJ:.o=.libk.o)
 

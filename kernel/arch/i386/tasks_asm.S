@@ -16,7 +16,23 @@
  */
 
 .globl idle_process
+.extern p_current, p_last
 
 idle_process:
     hlt
     jmp idle_process
+
+get_eip:
+    popl %eax
+    jmp *%eax
+
+switch_process:
+    push %eax
+    push %edx
+    push %ecx
+
+    # TODO: Complete this
+
+    popl %ecx
+    popl %edx
+    popl %ecx

@@ -6,62 +6,37 @@
 #include <kernel/tasks.h>
 #include <io.h>
 
-static volatile uint32_t _timer_ticks;
-static volatile uint32_t _timer_millis;
+static uint8_t counter_settings[3];
 
 void timer_isr(stack_state_t* state)
 {
-    _timer_ticks++;
-    if(_timer_ticks % MILLI_INTERVAL) {
-        _timer_millis++;
-        process_preempt(state);
-    }
+#if 0
+    (void) state;
+    putchar('a');
+#else
+    process_preempt(state);
+#endif
 }
 
 void pit_init()
 {
-    pit_createCounter(MAIN_FRQ, PIT_COUNTER0, 0x34);
-    pit_createCounter(0x1, PIT_COUNTER2, 0x36);
-    idt_addISR(32, (uint32_t)timer_isr);
+    pit_createCounter(MAIN_FRQ, PIT_COUNTER0, PIT_ACCESS_MODE_LO_HI | PIT_MODE_RATE_GENERATOR);
+    idt_addISR(32, timer_isr);
 }
 
-void pit_createCounter(uint32_t frequencey, uint8_t counter, uint8_t mode)
+void pit_createCounter(uint32_t frequency, uint8_t counter, uint8_t mode)
 {
-    if(!frequencey) return;
-    uint32_t divisor = 1193182 / frequencey;
+    if(!frequency) return;
+    uint32_t divisor = 1193182 / frequency;
 
+    counter_settings[counter >> 6] = mode;
     outb(PIT_COMMAND, mode | counter << 6);
 
-    outb(counter, (divisor >> 0) & 0xFF);
-    outb(counter, (divisor >> 8) & 0xFF);
+    pit_writeReload(divisor, counter);
 }
 
-uint32_t pit_getTicks()
-{
-    return _timer_ticks;
-}
-
-uint32_t pit_getMillis()
-{
-    return _timer_ticks / MILLI_INTERVAL;
-}
-
-void pit_tsleep(uint32_t ticks)
-{
-    //TODO: Make thread safe
-    asm("pushf\n\tsti");
-    volatile uint32_t end_ticks = _timer_ticks+ticks;
-    while(_timer_ticks <= end_ticks) asm("hlt");
-    asm("popf");
-    return;
-}
-
-void pit_sleep(uint32_t millis)
-{
-    //TODO: Make thread safe
-    asm("pushf\n\tsti");
-    volatile uint32_t end_millis = _timer_millis+millis;
-    while(_timer_millis <= end_millis) asm("hlt");
-    asm("popf");
-    return;
+void pit_writeReload(uint16_t value, uint8_t counter) {
+    outb(counter, value & 0xFF);
+    if(counter_settings[counter >> 6] & PIT_ACCESS_MODE_LO_HI)
+        outb(counter, value >> 8);
 }

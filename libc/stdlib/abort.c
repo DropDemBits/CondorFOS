@@ -7,11 +7,12 @@ __attribute__((__noreturn__))
 void abort(void)
 {
 #if __STDC_HOSTED__ == 1
-    //TODO: Call exit with suitable errno
+    //TODO: Raise abort signal
+    printf("abort()\n");
+    while (1);
 #else
     //Panic
     kpanic("Abnormal exit");
-    while(1) asm("hlt");
-#endif    
+#endif
     __builtin_unreachable();
 }

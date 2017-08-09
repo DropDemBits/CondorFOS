@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
 #include <kernel/idt.h>
 #include <kernel/klogger.h>
 #include <kernel/hal.h>
@@ -73,8 +74,8 @@ extern void isr45();
 extern void isr46();
 extern void isr47();
 
-static uint32_t isrs[256];
-static char* predefMSGS[] = {
+static isr_t isrs[256];
+static const char* predefMSGS[] = {
     "Division by 0",
     "Debug",
     "NMI",
@@ -111,26 +112,16 @@ static char* predefMSGS[] = {
 };
 static uint32_t* descriptors;
 
-static void default_isr(stack_state_t* state)
-{
-    //Just return, nothing special
-    state->eip += 2;
-    return;
-}
-
 void isr_handler(stack_state_t* state)
 {
-
-    if(!isrs[state->int_num] && state->int_num < 32) kspanic(predefMSGS[state->int_num], state);
+    if(isrs[state->int_num] == 0x00 && state->int_num < 32) kspanic(predefMSGS[state->int_num], state);
     else {
-        void (*handler)(stack_state_t*);
-        if(isrs[state->int_num]) {
-            handler = (void*) isrs[state->int_num];
-            handler(state);
+        if(isrs[state->int_num] != 0x00) {
+            isrs[state->int_num](state);
         }
     }
 
-    ic_ack(state->int_num-32);
+    if(state->int_num >= IRQ0) ic_ack(state->int_num-32);
 }
 
 static void idt_registerInterrupt(uint16_t int_num, uint32_t func_addr, uint16_t gdt_selector, uint8_t type_attrib)
@@ -143,14 +134,14 @@ static void idt_registerInterrupt(uint16_t int_num, uint32_t func_addr, uint16_t
     descriptors[int_num+1] = desc_higher;
 }
 
-void idt_addISR(uint16_t int_num, uint32_t addr)
+void idt_addISR(uint16_t int_num, isr_t addr)
 {
     isrs[int_num] = addr;
 }
 
 void idt_clearISR(uint16_t int_num)
 {
-    isrs[int_num] = 0x0;
+    isrs[int_num] = (isr_t)0x00;
 }
 
 void idt_init(uint32_t memory_location)
@@ -207,6 +198,8 @@ void idt_init(uint32_t memory_location)
     idt_registerInterrupt(IRQ13, (uint32_t)isr45, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(IRQ14, (uint32_t)isr46, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(IRQ15, (uint32_t)isr47, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
+    //Clear ISRs
+    memset(isrs, 0x00, sizeof(isrs));
     //Mask all but irqs 1, 2, 12, 14, and 15
     ic_maskIRQ(0);
     ic_unmaskIRQ(1);
@@ -224,9 +217,4 @@ void idt_init(uint32_t memory_location)
     ic_maskIRQ(13);
     ic_unmaskIRQ(14);
     ic_unmaskIRQ(15);
-
-    //Add default ISRs
-    idt_addISR(0, (uint32_t)default_isr);
-    idt_addISR(1, (uint32_t)default_isr);
-    idt_addISR(3, (uint32_t)default_isr);
 }

@@ -49,7 +49,6 @@ process_t* process_create(void (*entry_point)(void))
     memset(regs, 0x00, sizeof(registers_t));
 
     proc->regs = regs;
-    proc->timeslice = MAX_PROCESS_TIMESLICE;
     proc->pid = pid_counter++;
     proc->page_base = vmm_get_current_page_base();
 
@@ -57,7 +56,6 @@ process_t* process_create(void (*entry_point)(void))
     // TODO: Move somewhere else
     linear_addr_t* stack_base = vmalloc(1);
     physical_addr_t* stack_phybase = pmalloc();
-    printf(" Stack Base PHY (%d): %lx\n", pid_counter-1, stack_phybase);
     if(vmm_map_address(stack_base, stack_phybase, PAGE_PRESENT | PAGE_RW) == 2) {
         kpanic("VADDR Alloc Failed (process_create)");
     }
@@ -90,49 +88,32 @@ process_t* process_create(void (*entry_point)(void))
 
 void swap_registers(registers_t* src, registers_t* dest)
 {
-    dest->eax = src->eax;
-    dest->ebx = src->ebx;
-    dest->ecx = src->ecx;
-    dest->edx = src->edx;
-    dest->edi = src->esi;
-    dest->edi = src->edi;
-    dest->esp = src->esp;
-    dest->ebp = src->ebp;
-    dest->eip = src->eip;
-    dest->eflags = src->eflags;
-    dest->cs = src->cs;
-    dest->ds = src->ds;
-    dest->es = src->es;
-    dest->fs = src->fs;
-    dest->gs = src->gs;
-    dest->ss = src->ss;
+    memcpy(dest, src, sizeof(registers_t));
 }
 
 void process_preempt(stack_state_t* state)
 {
+    uint32_t int_num = 0;
+
     if(p_current == NULL) return;
 
-    if((p_current->regs->eip & 0xC0000000) ^ 0xC0000000) {
-        state->err_code = p_current->regs->eip;
-        state->eax = p_current->pid;
-        kspanic("Malformed EIP", state);
-    }
 
-    if(p_current->current_state == INITIALIZED) {
-        swap_registers(p_current->regs, state);
-        p_current->current_state = RUNNING;
-    }
-    else if(p_current->next == NULL) p_current->timeslice = MAX_PROCESS_TIMESLICE;
-    else if(--p_current->timeslice <= 0) {
-        swap_registers(state, p_current->regs);
-        if(p_current->pid != 0) p_current->timeslice = MAX_PROCESS_TIMESLICE;
-        else p_current->timeslice = MAX_IDLE_SLICE;
-        p_last->next = p_current;
-        p_last = p_current;
-        p_current = p_last->next;
-        p_last->next = NULL;
-        swap_registers(p_current->regs, state);
-    }
+    if(p_current->current_state != INITIALIZED) swap_registers(state, p_current->regs);
+    else p_current->current_state = RUNNING;
+
+    int_num = state->int_num;
+    if(p_current->next == NULL) goto skip;
+    //if(p_current->next->pid == 0) p_last->next = p_current;
+
+    swap_registers(state, p_current->regs);
+    if(p_last != NULL) p_last->next = p_current;
+    p_last = p_current;
+    p_current = p_last->next;
+    p_last->next = NULL;
+
+    skip:
+    swap_registers(p_current->regs, state);
+    state->int_num = int_num;
 
 
     terminal_storePosition();

@@ -6,6 +6,12 @@ extern "C"
 {
 #endif
 
+#ifdef __GNU_C__
+/* GNU Compiler specifics */
+#else
+#define __attribute__(a)
+#endif
+
 #ifdef NULL
 #   undef NULL
 #   define NULL (void*)0

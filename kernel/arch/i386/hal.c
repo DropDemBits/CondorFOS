@@ -91,29 +91,14 @@ void hal_initTimer()
     pit_init();
 }
 
-void timer_createCounter(udword_t frequencey, ubyte_t counter, ubyte_t mode)
+void timer_createCounter(udword_t frequency, ubyte_t counter, ubyte_t mode)
 {
-    pit_createCounter(frequencey, counter, mode);
+    pit_createCounter(frequency, counter, mode);
 }
 
-udword_t timer_getTicks()
+void timer_writeReload(uint16_t value, uint8_t counter)
 {
-    return pit_getTicks();
-}
-
-udword_t timer_getMillis()
-{
-    return pit_getMillis();
-}
-
-void timer_sleep(udword_t millis)
-{
-    pit_sleep(millis);
-}
-
-void timer_tsleep(udword_t ticks)
-{
-    pit_tsleep(ticks);
+    pit_writeReload(value, counter);
 }
 
 /**===================================================**\
@@ -122,10 +107,10 @@ void timer_tsleep(udword_t ticks)
 
 void hal_initController()
 {
-    printf("RET: %x\n", ps2_init());
+    printf("RET: %x\n", ps2_init() & 0xFF);
 }
 
-void controller_handleDevice(int device, uqword_t func)
+void controller_handleDevice(int device, isr_t func)
 {
     ps2_handleDevice(device, func);
 }

@@ -233,7 +233,7 @@ void pmm_clear_region(physical_addr_t base, size_t size)
 {
     if(size == 0) return;
 
-    for(udword_t blocks = base >> 12; blocks < (size + 0xFFF) >> 12; blocks++) {
+    for(udword_t blocks = base >> 12; blocks < (base + size + 0xFFF) >> 12; blocks++) {
         if(blocks >= 0xFFFFF) break;
         else if(blocks >= 0x01000) {
             stack_push(blocks << 12);
@@ -247,7 +247,7 @@ void pmm_set_region(physical_addr_t base, size_t size)
 {
     if(size == 0) return;
 
-    for(udword_t blocks = base >> 12; blocks < (size + 0xFFF) >> 12; blocks++) {
+    for(udword_t blocks = base >> 12; blocks < (base + size + 0xFFF) >> 12; blocks++) {
         if(blocks >= 0x01000) break;
         paddm_set_bit(blocks);
     }

@@ -21,6 +21,34 @@
 #ifndef _TTY_H
 #define _TTY_H
 
+typedef struct {
+    uint8_t should_update_cursor : 1;
+    uint8_t monochrome : 1;
+    uint8_t indexed_color : 1;
+} tflags_t;
+
+typedef struct {
+    uint8_t foreground : 4;
+    uint8_t background : 4;
+} tcolour_index_t;
+
+typedef struct {
+    uint8_t term_char;
+    uint8_t term_colour;
+} tchar_t;
+
+typedef struct {
+    uint16_t width;
+    uint16_t height;
+    uint16_t column;
+    uint16_t row;
+    uint16_t column_store;
+    uint16_t row_store;
+    tcolour_index_t default_color;
+    tflags_t flags;
+    tchar_t* buffer;
+} terminal_t;
+
 /**
  * Clears the terminal
  */

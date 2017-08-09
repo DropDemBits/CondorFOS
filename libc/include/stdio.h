@@ -12,8 +12,8 @@ extern "C"
 // Macros
 #define EOF -1
 
-int printf(const char *format, ...);
-int sprintf(char *dest, const char *format, ...);
+int __attribute__((format (printf, 2, 3))) printf(const char *format, ...);
+int __attribute__((format (printf, 3, 4))) sprintf(char *dest, const char *format, ...);
 int vprintf(const char *format, va_list params);
 int vsprintf(char *dest, const char *format, va_list params);
 int puts(const char *str);

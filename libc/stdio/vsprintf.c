@@ -16,12 +16,12 @@ int vsprintf(char *dest, const char *format, va_list params)
 {
     size_t amount;
     bool rejected_formater = false;
+    bool pound = false;
     int length = 0;
-    uint8_t pound = 0;
     int written = 0;
     char buffer[65];
     size_t index = 0;
-    
+
     while(*format)
     {
         if(*format != '%')
@@ -52,7 +52,7 @@ int vsprintf(char *dest, const char *format, va_list params)
         //Format parsing
         if(*format == '#')
         {
-            pound = 1;
+            pound = true;
             format++;
         }
 
@@ -86,7 +86,7 @@ int vsprintf(char *dest, const char *format, va_list params)
             if(length == 1) number = va_arg(params, int32_t);
             else if(length == 2) number = va_arg(params, int64_t);
             else number = va_arg(params, int);
-            
+
             amount += strlen(itoa(number, buffer, 10));
             print(dest, buffer, strlen(buffer), &index);
             format++;
@@ -111,7 +111,9 @@ int vsprintf(char *dest, const char *format, va_list params)
                 number = va_arg(params, uint32_t);
             else if(length == 2)
                 number = va_arg(params, uint32_t);
-            
+
+            if(pound) print(dest, "0x", strlen("0x"), &index);
+
             amount += strlen(ultoa(number, buffer, 16));
             for(size_t i = 0; i < strlen(buffer); i++)
                 buffer[i] = tolower(buffer[i]);
@@ -127,8 +129,8 @@ int vsprintf(char *dest, const char *format, va_list params)
             else if(length == 2)
                 number = va_arg(params, uint32_t);
 
-            if(pound) print(dest, "0x", 2, &index);
-            
+            if(pound) print(dest, "0x", strlen("0x"), &index);
+
             amount += strlen(ultoa(number, buffer, 16));
             print(dest, buffer, strlen(buffer), &index);
             format++;
@@ -146,7 +148,7 @@ int vsprintf(char *dest, const char *format, va_list params)
         amount = 0;
         pound = false;
     }
-    
+
     print(dest, "\0", 1, &index);
     return written;
 }

@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* 
+/*
  * File:   threads.h
  * Author: DropDemBits <r3usrlnd@gmail.com>
  *
@@ -28,9 +28,9 @@
 #ifndef THREADS_H
 #define THREADS_H
 
-#define MAX_THREAD_COUNT 100
-#define MAX_PROCESS_TIMESLICE 100
-#define MAX_IDLE_SLICE MAX_PROCESS_TIMESLICE
+#define MAX_THREAD_COUNT 255
+#define MAX_PROCESS_TIMESLICE 1
+#define MAX_IDLE_SLICE 1
 
 typedef enum {
     INITIALIZED,
