@@ -55,23 +55,33 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         kpanic("Not loaded by a multiboot bootloader");
     }
 
-    printf("Kernel (Start: %lx, End: %lx), MB_INFO: %#lx\n", &kernel_start, &kernel_end, vmm_get_physical_addr((linear_addr_t*)info_struct));
+    printf("Kernel (Start: %lx, End: %lx)\n", &kernel_start, &kernel_end);
 
     if(info_struct->flags & MULTIBOOT_INFO_MEMORY) {
         printf("Memory Size: Low: %ldkb, %ldkb, Total: %ldMiB\n", info_struct->mem_lower, info_struct->mem_upper, (info_struct->mem_lower+info_struct->mem_upper)/1024);
     }
 
-    printf("Modules: %#lx\n", info_struct->framebuffer_addr);
     logNorm("Initializing VMM\n");
     vmm_init();
 
     if(info_struct->flags & MULTIBOOT_INFO_MEM_MAP) {
         multiboot_memory_map_t* mmap = (multiboot_memory_map_t*) (info_struct->mmap_addr | KERNEL_BASE);
+        multiboot_module_t* module = (multiboot_module_t*) (info_struct->mods_addr | KERNEL_BASE);
+
         logNorm("Initializing PMM\n");
         pmm_init(mmap, info_struct->mmap_length);
 
         //Remove regions already occupied/mapped
         pmm_set_region((linear_addr_t)&kernel_start - KERNEL_BASE, (size_t)&kernel_end - KERNEL_BASE);
+        //For now, reserve stuff from multiboot info
+        pmm_set_region(((linear_addr_t) info_struct) & ~KERNEL_BASE, sizeof(multiboot_info_t));
+
+        //Reserve spaces occupied by modules, and stuff pointed to
+        for(size_t i = 0; i < info_struct->mods_count; i++, module++) {
+            pmm_set_region((physical_addr_t) vmm_get_physical_addr((linear_addr_t*)module), sizeof(multiboot_module_t));
+            pmm_set_region(module->mod_start, module->mod_start - module->mod_end);
+            pmm_set_region(module->cmdline, 1);
+        }
 
         while(((udword_t)mmap) < (info_struct->mmap_addr | KERNEL_BASE) + info_struct->mmap_length) {
             //Print MMAP
@@ -100,8 +110,16 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     if(ide_dev0 != ATA_DEVICE_INVALID) printf("IDE Device on Primary Bus (dev_id: %d)\n", ide_dev0);
     if(ide_dev1 != ATA_DEVICE_INVALID) printf("IDE Device on Secondary Bus (dev_id: %d)\n", ide_dev1);
 
-    linear_addr_t* data = kmalloc(256 * 16 * 4);
-    if(ata_readSectors(ide_dev1, 0, 3, data) != NULL) printf("This is data: %s\n", data);
+    linear_addr_t* data = kmalloc(4096);
+    memset(data, 0x00, 4096);
+    if(ata_readSectors(ide_dev0, 0, 1, data)) printf("(Bus0,ATA) This is data: %lx%lx%lx%lx\n", data[0], data[1], data[2], data[3]);
+    memset(data, 0x00, 4096);
+    if(ata_readSectors(ide_dev1, 0, 1, data)) printf("(Bus1,ATA) This is data: %lx%lx%lx%lx\n", data[0], data[1], data[2], data[3]);
+    memset(data, 0x00, 4096);
+    if(atapi_readSectors(ide_dev0, 0, 1, data)) printf("(Bus0,ATAPI) This is data: %lx%lx%lx%lx\n", data[0], data[1], data[2], data[3]);
+    memset(data, 0x00, 4096);
+    if(atapi_readSectors(ide_dev1, 0, 1, data)) printf("(Bus1,ATAPI) This is data: %lx%lx%lx%lx\n", data[0], data[1], data[2], data[3]);
+    kfree(data);
 
     if(info_struct->flags & MULTIBOOT_INFO_BOOT_LOADER_NAME) {
         logInfo("Loaded by Multiboot loader ");
@@ -110,22 +128,38 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         serial_writechar(COM1, '\n');
         serial_writechar(COM1, '\r');
     }
+
+    linear_addr_t* test_laddr = (linear_addr_t*)0xFFFFFFFF;
+
     if(info_struct->flags & MULTIBOOT_INFO_MODS && info_struct->mods_count) {
         logInfo("Bootloader has loaded modules\n");
         printf("Number of modules: %d\n", info_struct->mods_count);
+
+        multiboot_module_t* module = (multiboot_module_t*) (info_struct->mods_addr | KERNEL_BASE);
+        linear_addr_t* cmdline = (linear_addr_t*) 0x04000000;
+
+        for(size_t i = 0; i < info_struct->mods_count; i++, module++) {
+            vmm_map_address(cmdline, (physical_addr_t*) module->cmdline, PAGE_PRESENT | PAGE_REMAP);
+            cmdline = (linear_addr_t*)((linear_addr_t)cmdline | (module->cmdline & 0xFFF));
+            if(strncmp((char*) cmdline, "/test.bin", strlen("/test.bin")) == 0) {
+                test_laddr = vmalloc(1);
+                vmm_map_address(test_laddr, (physical_addr_t*)module->mod_start, PAGE_PRESENT | PAGE_USER);
+            }
+            else if(strncmp((char*) cmdline, "/initrd.tar.gz", strlen("/initrd.tar.gz")) == 0)
+                printf("This is initrd.tar.gz\n");
+            else
+                printf("Unknown module %s\n", cmdline);
+        }
+
+        vmm_map_address(cmdline, (physical_addr_t*) 0, PAGE_REMAP);
     }
 
-    logNorm("Initializing Generic ATA Driver\n");
-    ata_init();
-
-    logNorm("Initializing Timer\n");
-    hal_initTimer();
-
-    logNorm("Initializing Device Controller\n");
-    hal_initController();
-
-    logNorm("Initializing keyboard\n");
-    keyboard_init();
+    process_create(idle_process);
+    if(test_laddr != (linear_addr_t*)0xFFFFFFFF) {
+        process_create(test_laddr);
+    }
+    process_create(idle_process);
+    process_create(kmain);
 
     //Do tests
 #ifndef _DO_TESTS
@@ -145,7 +179,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
 
     physical_addr_t* paddr2 = pmalloc();
     vmm_map_address(laddr, paddr2, 0x3);
-    printf(", PADDR2 %#lx, AT ADDR: %#lx", paddr2, *laddr);
+    printf(", PADDR2 %#lx, AT ADDR: %#lx\n", paddr2, *laddr);
     pfree(paddr_big, 4096);
 
     if(*laddr != 0xB00FBEEF) kpanic("PMM Test failed (Mappings Not Equal)");
@@ -179,14 +213,8 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     vfree(laddr2, 4096);
 #endif
 
-    process_create(idle_process);
-    process_create(yeet);
-    process_create(zeet);
-    //process_create(kmain);
-
     //Initialization done, Enable interrupts & timer
     ic_unmaskIRQ(0);
-    //asm("xchg %bx, %bx");
     hal_enableInterrupts();
 
     idle_process();
@@ -203,25 +231,6 @@ static char* getKernelRelType(udword_t type)
     }
 }
 
-int yeet()
-{
-    while(1) {
-        terminal_setColor(VGA_BLACK, VGA_GREEN);
-        terminal_putchar('a');
-        //asm("xchg %bx, %bx");
-    }
-    return 0;
-}
-
-int zeet()
-{
-    while(1) {
-        terminal_setColor(VGA_WHITE, VGA_RED);
-        terminal_putchar('B');
-    }
-    return 0;
-}
-
 int kmain()
 {
     logNorm("Successfully Initialized kernel\n");
@@ -231,24 +240,19 @@ int kmain()
     udword_t* version = getKernelVersion();
     printf(KERNEL_VERSION_FORMATER, version[0], version[1], version[2], getKernelRelType(version[3]));
     printf(")\n");
-
-    while(keyboard_readKey()) asm("pause");
-
     ubyte_t last_state = 0;
 
-    while(1)
-    {
-	    ubyte_t new_char = keyboard_readKey();
+    keyboard_resetState();
 
-        if(new_char && keyboard_getKeyState(new_char) != last_state)
-        {
+    while(1) {
+        ubyte_t new_char = keyboard_readKey();
+
+        if(new_char && keyboard_getKeyState(new_char) != last_state) {
             if(keyboard_getChar(new_char)) {
                 printf("%c", keyboard_getChar(new_char));
             }
             last_state = keyboard_getKeyState(new_char);
         } else last_state = 0;
-
-        //asm("hlt");
     }
 
     return 0;

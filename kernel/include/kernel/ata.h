@@ -15,6 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdbool.h>
+
 #include <condor.h>
 #include <kernel/ata_portio.h>
 
@@ -228,7 +230,8 @@ typedef struct {
 #define ATA_STATUS_ALT 0x206
 
 /* Alternate Names */
-#define ATA_INT_REASON ATA_FEATURES
+#define ATA_INT_REASON ATA_SECT_COUNT
+#define ATA_ERROR ATA_FEATURES
 #define ATA_BYTELO ATA_LBAMI
 #define ATA_BYTEHI ATA_LBAHI
 #define ATA_STATUS ATA_COMMAND
@@ -239,20 +242,231 @@ typedef struct {
 
 typedef enum {
 	NONE,
-	ATA,
-	ATAPI,
-	SATA,
-	SATAPI,
+	ATA = 0b100,
+	SATA = 0b101,
+	ATAPI = 0b110,
+	SATAPI = 0b111,
 } ata_interface_type_t;
 
-//ATA Commands
+//ATA Commands (Created using ATA/ATAPI-6 & ACS-3)
 enum {
+	// General feature set
 	ATA_IDENTIFY_DEVICE = 0xEC,
+	ATA_EXECUTE_DEVICE_DIAGNOSTIC = 0x90,
+	ATA_SET_FEATURES = 0xEF,
+	ATA_DATA_SET_MANAGEMENT = 0x06,
+	ATA_DOWNLOAD_MICROCODE = 0x92,
+	ATA_DOWNLOAD_MICROCODE_DMA = 0x93,
+	ATA_FLUSH_CACHE = 0xE7,
+	ATA_NOP = 0x00,
+	ATA_SET_DATE_TIME_EXT = 0x77,
+	ATA_SET_MULTIPLE_MODE = 0xC6,
+	ATA_READ_BUFFER = 0xE4,
+	ATA_READ_BUFFER_DMA = 0xE9,
+	ATA_READ_DMA = 0xC8,
+	ATA_READ_MULTIPLE = 0xC4,
+	ATA_READ_SECTORS = 0x20,
+	ATA_READ_VERIFY_SECTORS = 0x40,
+	ATA_WRITE_BUFFER = 0xE8,
+	ATA_WRITE_BUFFER_DMA = 0xEB,
+	ATA_WRITE_DMA = 0xCA,
+	ATA_WRITE_MULTIPLE = 0xC5,
+	ATA_WRITE_SECTORS = 0x30,
+	ATA_WRITE_UNCORRECTABLE_EXT = 0x45,
+
+	// Packet feature set
+	ATA_DEVICE_RESET = 0x08,
+	ATA_PACKET = 0xA0,
+	ATA_IDENTIFY_PACKET_DEVICE = 0xA1,
+	ATA_SEEK = 0x70, // Obsolete ATA7
+
+	// Overlapped feature set (Obsolete ACS2)
+	ATA_READ_DMA_QUEUED = 0xC7,
+	ATA_READ_DMA_QUEUED_EXT = 0x26,
+	ATA_WRITE_DMA_QUEUED = 0xCC,
+	ATA_WRITE_DMA_QUEUED_EXT = 0x36,
+	ATA_SERVICE = 0xA2,
+
+	// 48bit Address feature set (Includes EXT suffixed commands)
+	ATA_FLUSH_CACHE_EXT = 0xEA,
+	ATA_READ_DMA_EXT = 0x25,
+	ATA_READ_MULTIPLE_EXT = 0x29,
+	ATA_READ_SECTORS_EXT = 0x24,
+	ATA_READ_VERIFY_SECTORS_EXT = 0x42,
+	ATA_WRITE_DMA_EXT = 0x35,
+	ATA_WRITE_DMA_FUA_EXT = 0x3D,
+	ATA_WRITE_MULTIPLE_EXT = 0x39,
+	ATA_WRITE_MULTIPLE_FUA_EXT = 0xCE,
+	ATA_WRITE_SECTORS_EXT = 0x34,
+
+	// Accessible Max Address Configuation feature set
+	ATA_ACCESSIBLE_MAX_ADDRESS_CONFIGURATION = 0x78,
+	ATA_AMAC_GET_NATIVE_MAX_ADDRESS_EXT = 0x00,
+	ATA_AMAC_SET_MAX_ADDRESS_EXT = 0x01,
+	ATA_AMAC_FREEZE_ACCESSIBLE_MAX_ADDRESS_EXT = 0x02,
+
+	// CFA feature set
+	ATA_CFA_REQUEST_EXTENDED_ERROR = 0x03,
+	ATA_CFA_WRITE_SECTORS_NO_ERASE = 0x38,
+	ATA_CFA_WRITE_MULTIPLE_NO_ERASE = 0xCD,
+	ATA_CFA_TRANSLATE_SECTOR = 0x87,
+	ATA_CFA_ERASE_SECTORS = 0xC0,
+
+	// General Purpose Logging (GPL) feature set
+	ATA_READ_LOG_EXT = 0x2F,
+	ATA_READ_LOG_DMA_EXT = 0x47,
+	ATA_WRITE_LOG_EXT = 0x3F,
+	ATA_WRITE_LOG_DMA_EXT = 0x57,
+
+	// Native Command Queuing (NCQ) feature set
+	ATA_READ_FPDMA_QUEUED = 0x60,
+	ATA_WRITE_FPDMA_QUEUED = 0x61,
+	ATA_NCQ_QUEUE_MANAGEMENT = 0x63,
+	ATA_SEND_FPDMA_QUEUED = 0x64,
+	ATA_RECEIVE_FPDMA_QUEUED = 0x65,
+
+	// Power Management feature set
+	ATA_CHECK_POWER_MODE = 0xE5,
+	ATA_IDLE = 0xE3,
+	ATA_IDLE_IMMEDIATE = 0xE1,
+	ATA_SLEEP = 0xE6,
+	ATA_STANDBY = 0xE2,
+	ATA_STANDBY_IMMEDIATE = 0xE0,
+
+	// Sanitize Device feature set
+	ATA_SANATIZE_DEVICE = 0xB4,
+	ATA_SANATIZE_STATUS_EXT = 0x00,
+	ATA_SANATIZE_FREEZE_LOCK_EXT = 0x00,
+	ATA_CRYPTO_SCRAMBLE_EXT = 0x00,
+	ATA_BLOCK_ERASE_EXT = 0x00,
+	ATA_OVERWRITE_EXT = 0x00,
+
+	// Security feature set
+	ATA_SECURITY_SET_PASSWORD = 0xF1,
+	ATA_SECURITY_UNLOCK = 0xF2,
+	ATA_SECURITY_ERASE_PREPARE = 0xF3,
+	ATA_SECURITY_ERASE_UNIT = 0xF4,
+	ATA_SECURITY_FREEZE_LOCK = 0xF5,
+	ATA_SECURITY_DISABLE_PASSWORD = 0xF6,
+
+	// SMART feature set
+	ATA_SMART = 0xB0,
+	ATA_SMART_DISABLE_OPERATIONS = 0x00,
+	ATA_SMART_SET_AUTOSAVE = 0x00,
+	ATA_SMART_ENABLE_OPERATIONS = 0x00,
+	ATA_SMART_RETURN_STATUS = 0x00,
+	ATA_SMART_EXECUTE_OFF_LINE = 0x00,
+	ATA_SMART_READ_DATA = 0x00,
+	ATA_SMART_READ_LOG_SECTOR = 0x00,
+	ATA_SMART_WRITE_LOG_SECTOR = 0x00,
+
+	// Sense Data Reporting feature set
+	ATA_REQUEST_SENSE_DATA_EXT = 0x0B,
+
+	// Streaming feature set
+	ATA_CONFIGURE_STREAM = 0x51,
+	ATA_READ_STREAM_PIO = 0x2B,
+	ATA_READ_STREAM_DMA = 0x2A,
+	ATA_WRITE_STREAM_PIO = 0x3B,
+	ATA_WRITE_STREAM_DMA = 0x3A,
+
+	ATA_READ_STREAM_EXT = 0x2B,
+	ATA_READ_STREAM_DMA_EXT = 0x2A,
+	ATA_WRITE_STREAM_EXT = 0x3B,
+	ATA_WRITE_STREAM_DMA_EXT = 0x3A,
+
+	// Trusted Computing feature set
+	ATA_TRUSTED_NON_DATA = 0x5B,
+	ATA_TRUSTED_SEND = 0x5E,
+	ATA_TRUSTED_SEND_DMA = 0x5F,
+	ATA_TRUSTED_RECEIVE = 0x5C,
+	ATA_TRUSTED_RECEIVE_DMA = 0x5D,
+
+	// Device Configuration Overlay feature set (Obsolete ACS3)
+	ATA_DEVICE_CONFIGURATION = 0xB1,
+	ATA_DEVICE_CONFIGURATION_FREEZE_LOCK = 0x00,
+	ATA_DEVICE_CONFIGURATION_IDENTIFY = 0x00,
+	ATA_DEVICE_CONFIGURATION_RESTORE = 0x00,
+	ATA_DEVICE_CONFIGURATION_SET = 0x00,
+
+	// Media Card Pass Through Command feature set
+	ATA_CHECK_MEDIA_CARD_TYPE = 0xD1, // Obsolete ACS2
+	//SD Card ATA Command Extension
+	ATA_SD_ACE_D2 = 0xD2,
+	ATA_SD_ACE_D3 = 0xD3,
+	ATA_SD_ACE_D4 = 0xD4,
+	//Smart Media ATA Command Extension
+	ATA_SM_ACE_D2 = 0xD2,
+	ATA_SM_ACE_D3 = 0xD3,
+	ATA_SM_ACE_D4 = 0xD4,
+
+	// Removeable Media Status Notification feature set (Obsolete ATA8)
+	ATA_GET_MEDIA_STATUS = 0xDA,
+
+	// Removeable Media feature set (Obsolete ATA8)
+	ATA_MEDIA_EJECT = 0xED,
+	ATA_MEDIA_LOCK = 0xDE,
+	ATA_MEDIA_UNLOCK = 0xDF,
+
+	// Host Protected Area feature set (Obsolete ACS3)
+	ATA_SET_MAX_ADDRESS = 0xF9,
+	ATA_SET_MAX_ADDRESS_EXT = 0x37,
+	ATA_READ_NATIVE_MAX_ADDRESS = 0xF8,
+	ATA_READ_NATIVE_MAX_ADDRESS_EXT = 0x27,
+
+	// SET FEATURE Codes
+	SET_FEATURE_ENABLE_8BIT_TRANSFERS = 0x01, // Retired ATA4, Reserved for CFA ATA5+
+	SET_FEATURE_ENABLE_WRITE_CACHE = 0x02,
+	SET_FEATURE_SET_TRANSFER_MODE = 0x03,
+	SET_FEATURE_ENABLE_AUTOMATIC_DEFECT_REASSIGNMENT = 0x04, // Obsolete ATA4
+	SET_FEATURE_ENABLE_APM = 0x05,
+	SET_FEATURE_ENABLE_PUIS_FEATURE_SET = 0x06, // Introduced ATA5
+	SET_FEATURE_PUIS_FEATURE_SET_DEVICE_SPIN_UP = 0x07,
+	SET_FEATURE_ADDR_OFFSET_BOOT_AREA_METHOD_REPORT0 = 0x09, // Obsolete ACS3
+	SET_FEATURE_ENABLE_CFA_POWER_MODE1 = 0x0A, // Reserved for CFA
+	SET_FEATURE_ENABLE_SATA = 0x10, // Introduced ATA8 / ACS1
+	SET_FEATURE_DISABLE_MEDIA_STATUS_NOTIFICATION = 0x31, // Obsolete ATA8
+	SET_FEATURE_DISABLE_RETRY = 0x33, // Obsolete ATA5
+	SET_FEATURE_ENABLE_FREE_FALL_CONTROL_FEATURE_SET = 0x41,
+	SET_FEATURE_ENABLE_AAM_FEATURE_SET = 0x42, // Obsolete ACS2
+	SET_FEATURE_SET_MAX_HOST_INTERFACE_SECTOR_TIMES = 0x43,
+	SET_FEATURE_VENDOR_LENGTH_OF_EEC_OF_LONG_RW_COMMANDS = 0x44, // Obsolete ATA4
+	SET_FEATURE_EPC = 0x4A, // Introduced ACS2
+	SET_FEATURE_SET_CACHE_SEGMENTS_TO_COUNT = 0x54, // Obsolete ATA4
+	SET_FEATURE_DISABLE_READ_LOOKAHEAD_FEATURE = 0x55,
+	SET_FEATURE_ENABLE_RELEASE_INTERRUPT = 0x5D, // Obsolete ACS2
+	SET_FEATURE_ENABLE_SERVICE_INTERRUPT = 0x5E, // Obsolete ACS2
+	SET_FEATURE_DISABLE_REVERT_TO_POWER_ON_DEFAULTS = 0x66,
+	SET_FEATURE_LONG_PHYSICAL_SECTOR_ALIGN_ERROR_REPORT_CTRL = 0x69, // Introduced ACS2
+	SET_FEATURE_DISABLE_ECC = 0x77, // Obsolete ATA4
+
+	SET_FEATURE_DISABLE_8BIT_TRANSFERS = 0x81, // Same status as enable
+	SET_FEATURE_DISABLE_WRITE_CACHE = 0x82,
+	SET_FEATURE_DISABLE_AUTOMATIC_DEFECT_REASSIGNMENT = 0x84, // Obsolete ATA4
+	SET_FEATURE_DISABLE_APM = 0x85,
+	SET_FEATURE_DISABLE_PUIS_FEATURE_SET = 0x86, // Introduced ATA5
+	SET_FEATURE_ENABLE_ECC = 0x88, // Obsolete ATA6
+	SET_FEATURE_ADDR_OFFSET_BOOT_AREA_METHOD_REPORT1 = 0x89,
+	SET_FEATURE_DISABLE_CFA_POWER_MODE1 = 0x8A, // Reserved for CFA
+	SET_FEATURE_DISABLE_SATA = 0x90, // Introduced ATA8 / ACS1
+	SET_FEATURE_ENABLE_MEDIA_STATUS_NOTIFICATION = 0x95, // Obsolete ATA8 / ACS1
+	SET_FEATURE_ENABLE_RETRIES = 0x99, // Obsolete ATA4
+	SET_FEATURE_SET_DEVICE_MAX_AVERAGE_CURRENT = 0x9A, // Obsolete ATA4
+	SET_FEATURE_ENABLE_READ_LOOKAHEAD_FEATURE = 0xAA,
+	SET_FEATURE_SET_MAX_PREFETCH_TO_COUNT = 0xAB,
+	SET_FEATURE_4BYTES_ECC_ON_LONG_RW_COMMANDS = 0xBB,
+	SET_FEATURE_DISABLE_FREE_FALL_CONTROL_FEATURE_SET = 0xC1,
+	SET_FEATURE_DISABLE_AAM_FEATURE_SET = 0xC2, // Obsolete ACS2
+	SET_FEATURE_TOGGLE_SENSE_DATA_REPORTING_FEATURE_SET = 0xC3,
+	SET_FEATURE_ENABLE_REVERT_TO_POWER_ON_DEFAULTS = 0xCC,
+	SET_FEATURE_DISABLE_RELEASE_INTERRUPT = 0xDD, // Obsolete ACS2
+	SET_FEATURE_DISABLE_SERVICE_INTERRUPT = 0xDE, // Obsolete ACS2
+
 } ATA_COMMANDS;
 
 //SCSI/ATAPI Commands
 enum {
-	ATAPI_IDENTIFY_PACKET_DEVICE = 0xA1,
+	// Packet Commands
 	ATAPI_READ_6=0x08,
 	ATAPI_READ_10=0x28,
 	ATAPI_READ_12=0xA8,
@@ -262,6 +476,33 @@ enum {
 	ATAPI_WRITE_12=0xAA,
 	ATAPI_WRITE_16=0x8A,
 } ATAPI_COMMANDS;
+
+typedef struct ata_device {
+    // Configuration
+    uword_t dev_id;
+    ubyte_t irq;
+    uword_t base_port;
+    uword_t alt_port;
+    bool is_slave;
+
+    // Info
+    ata_info_t* ata_info;
+    ata_interface_type_t interface_type : 3;
+    uword_t lba_support : 1;
+    uword_t dma_support : 1;
+    uword_t ata_version : 4;
+    uword_t mdma_support : 2;
+    uword_t udma_support : 3;
+    uword_t lba48_support : 1;
+    uword_t reserved : 1;
+    ubyte_t max_command_length : 2;
+
+    // Current State
+    bool in_use;
+    volatile bool is_blocked;
+    volatile bool has_errored;
+    ubyte_t error_info;
+} ata_device_t;
 
 inline ubyte_t atapi_getCommandType(ubyte_t command) {
     if((command & ATAPI_READ_6) == ATAPI_READ_6) return ATA_COMMAND_TYPE_READ;
@@ -277,8 +518,18 @@ inline ubyte_t atapi_getCommandType(ubyte_t command) {
  */
 uword_t ide_init(uword_t base_port, uword_t alt_port, ubyte_t irq);
 
-void* ata_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* destination);
+ata_device_t* ata_getDeviceInfo(uword_t device);
 
-void ata_writeSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* source);
+bool ata_sendCommand(uword_t device, ubyte_t command, ubyte_t subcommand, void* data, size_t data_length);
+
+bool ata_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* destination);
+
+bool ata_writeSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* source);
+
+bool atapi_sendCommand(uword_t device, ubyte_t *command, ubyte_t command_length, void* data);
+
+bool atapi_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* destination);
+
+bool atapi_writeSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* destination);
 
 #endif
