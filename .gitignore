@@ -31,3 +31,6 @@ nbproject/
 */core
 core
 *.sym
+
+# Others
+notes/

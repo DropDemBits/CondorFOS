@@ -52,7 +52,8 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         printf("EAX is %lx\n", magic);
         printf("EBX is %lx\n", info_struct);
-        kpanic("Not loaded by a multiboot bootloader");
+		logFErr("Not loaded by a multiboot bootloader");
+		idle_process();
     }
 
     printf("Kernel (Start: %lx, End: %lx)\n", &kernel_start, &kernel_end);
@@ -89,23 +90,29 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
             mmap = (multiboot_memory_map_t*) ((unsigned int)mmap + mmap->size + sizeof(mmap->size));
         }
     }
-
     logNorm("Initializing Core VADDM\n");
     vaddm_init();
 
     logNorm("Initializing Timer\n");
     hal_initTimer();
 
+    /*
+     * These two don't have to be initialized right now. They can wait after
+     * USB initialization, but we haven't initialized USB devices yet, so leave
+     * as be.
+     */
     logNorm("Initializing Device Controller\n");
     hal_initController();
 
     logNorm("Initializing keyboard\n");
     keyboard_init();
 
+#if _ARCH_IDE_HAS_DEFAULTS_ == 1
+    logNorm("Initializing IDE Controllers\n");
     uword_t ide_dev0 = ATA_DEVICE_INVALID, ide_dev1 = ATA_DEVICE_INVALID;
 
-    ide_dev0 = ide_init(0x1F0, 0x3F6, IRQ14);
-    ide_dev1 = ide_init(0x170, 0x376, IRQ15);
+    ide_dev0 = ide_init(0x1F0, 0x3F6, 14);
+    ide_dev1 = ide_init(0x170, 0x376, 15);
 
     if(ide_dev0 != ATA_DEVICE_INVALID) printf("IDE Device on Primary Bus (dev_id: %d)\n", ide_dev0);
     if(ide_dev1 != ATA_DEVICE_INVALID) printf("IDE Device on Secondary Bus (dev_id: %d)\n", ide_dev1);
@@ -120,6 +127,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     memset(data, 0x00, 4096);
     if(atapi_readSectors(ide_dev1, 0, 1, data)) printf("(Bus1,ATAPI) This is data: %lx%lx%lx%lx\n", data[0], data[1], data[2], data[3]);
     kfree(data);
+#endif
 
     if(info_struct->flags & MULTIBOOT_INFO_BOOT_LOADER_NAME) {
         logInfo("Loaded by Multiboot loader ");
@@ -139,7 +147,7 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         linear_addr_t* cmdline = (linear_addr_t*) 0x04000000;
 
         for(size_t i = 0; i < info_struct->mods_count; i++, module++) {
-            vmm_map_address(cmdline, (physical_addr_t*) module->cmdline, PAGE_PRESENT | PAGE_REMAP);
+            vmm_map_address(cmdline, (physical_addr_t*) module->cmdline, PAGE_PRESENT | PAGE_USER | PAGE_REMAP);
             cmdline = (linear_addr_t*)((linear_addr_t)cmdline | (module->cmdline & 0xFFF));
             if(strncmp((char*) cmdline, "/test.bin", strlen("/test.bin")) == 0) {
                 test_laddr = vmalloc(1);
@@ -154,12 +162,11 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
         vmm_map_address(cmdline, (physical_addr_t*) 0, PAGE_REMAP);
     }
 
-    process_create(idle_process);
+    process_create(idle_process, false);
     if(test_laddr != (linear_addr_t*)0xFFFFFFFF) {
-        process_create(test_laddr);
+        process_create(test_laddr, true);
     }
-    process_create(idle_process);
-    process_create(kmain);
+    process_create(kmain, false);
 
     //Do tests
 #ifndef _DO_TESTS
@@ -203,9 +210,9 @@ void kinit(multiboot_info_t *info_struct, uint32_t magic)
     laddr0 = vmalloc(8);
     printf("LADDR0: %lx, LADDR1: %lx, LADDR2: %lx\n", laddr0, laddr1, laddr2);
 
-    if(laddr0 == NULL) kpanic("VADDM Test failed (0-NULL)");
-    if(laddr1 == NULL) kpanic("VADDM Test failed (1-NULL)");
-    if(laddr2 == NULL) kpanic("VADDM Test failed (2-NULL)");
+    if(laddr0 == (linear_addr_t*)0xFFFFFFFF) kpanic("VADDM Test failed (0-NULL)");
+    if(laddr1 == (linear_addr_t*)0xFFFFFFFF) kpanic("VADDM Test failed (1-NULL)");
+    if(laddr2 == (linear_addr_t*)0xFFFFFFFF) kpanic("VADDM Test failed (2-NULL)");
     if(laddr0 == laddr1) kpanic("VADDM Test failed (0==1)");
 
     vfree(laddr1, 16);
