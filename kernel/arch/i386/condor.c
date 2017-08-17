@@ -62,15 +62,13 @@ void kexit(int status)
 
 void kpanic(const char* message)
 {
-    kspanic(message, NULL);
+    kspanic(message, POISON_NULL);
 }
 
 void kspanic(const char* message, stack_state_t* state)
 {
     terminal_setColor(VGA_WHITE, VGA_BLUE);
-    terminal_clear();
-    terminal_moveCursor(0,0);
-    if(state != NULL) kdump_useStack(state);
+    if(state != POISON_NULL) kdump_useStack(state);
     else {
 
     }
@@ -78,7 +76,7 @@ void kspanic(const char* message, stack_state_t* state)
     logFErr(message);
 
     asm("cli");
-    for(;;) asm("pause");
+    for(;;) asm("hlt");
 }
 
 void kputchar(const char c)

@@ -16,7 +16,7 @@
  */
 
 #include <condor.h>
-#include <kernel/idt.h>
+#include <kernel/irq.h>
 
 #ifndef _HAL_H_
 #define _HAL_H_
@@ -34,6 +34,8 @@ void hal_init();
 void hal_disableInterrupts();
 
 void hal_enableInterrupts();
+
+void hal_restoreInterrupts();
 
 /**===================================================**\
 |*     Hardware abstraction for the PIC and the APIC   *|
@@ -71,7 +73,7 @@ void timer_writeReload(uint16_t value, uint8_t counter);
 
 void hal_initController();
 
-void controller_handleDevice(int device, isr_t func);
+void controller_handleDevice(int device, irq_t func);
 
 int controller_sendDataTo(int device, ubyte_t data);
 

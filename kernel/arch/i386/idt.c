@@ -73,8 +73,8 @@ extern void isr44();
 extern void isr45();
 extern void isr46();
 extern void isr47();
+extern void isr_handler(stack_state_t* state);
 
-static isr_t isrs[256];
 static const char* predefMSGS[] = {
     "Division by 0",
     "Debug",
@@ -108,20 +108,36 @@ static const char* predefMSGS[] = {
     "Intel Reserved",
     "Security Exception",
     "Intel Reserved",
+    // Other
     "Invalid Excepion",
 };
+static isr_t isrs[256];
+static isr_handler_t* irqs[NR_IRQS];
 static uint32_t* descriptors;
 
 void isr_handler(stack_state_t* state)
 {
     if(isrs[state->int_num] == 0x00 && state->int_num < 32) kspanic(predefMSGS[state->int_num], state);
-    else {
+    else if(state->int_num < 32) {
         if(isrs[state->int_num] != 0x00) {
             isrs[state->int_num](state);
         }
-    }
+    } else if(state->int_num >= IRQ0 && state->int_num < NR_IRQS + IRQ0) {
+        //printf("isr_handler\n");
+        //asm("xchg %bx, %bx");
+        isr_handler_t* action = irqs[state->int_num-IRQ0];
 
-    if(state->int_num >= IRQ0) ic_ack(state->int_num-32);
+        while(action != POISON_NULL) {
+            irqreturn_t ret_val = action->handler(state);
+
+            if(ret_val == HANDLED) {
+                ic_ack(state->int_num-IRQ0);
+                break;
+            }
+
+            action = action->next;
+        }
+    }
 }
 
 static void idt_registerInterrupt(uint16_t int_num, uint32_t func_addr, uint16_t gdt_selector, uint8_t type_attrib)
@@ -134,14 +150,35 @@ static void idt_registerInterrupt(uint16_t int_num, uint32_t func_addr, uint16_t
     descriptors[int_num+1] = desc_higher;
 }
 
-void idt_addISR(uint16_t int_num, isr_t addr)
+void idt_addISR(uint16_t int_num, isr_t handler)
 {
-    isrs[int_num] = addr;
+    if(handler != POISON_NULL) {
+        isrs[int_num] = handler;
+    }
 }
 
-void idt_clearISR(uint16_t int_num)
+void idt_addIRQ_ISR(uint16_t int_num, irq_t handler)
 {
-    isrs[int_num] = (isr_t)0x00;
+    if(int_num >= NR_IRQS || handler == POISON_NULL) return;
+    hal_disableInterrupts();
+    printf("idt_addIRQ_ISR: %d, %lx\n", int_num, handler);
+    isr_handler_t* action = kmalloc(sizeof(isr_handler_t));
+    action->next = POISON_NULL;
+    action->handler = handler;
+
+    if(irqs[int_num] == POISON_NULL) {
+        irqs[int_num] = action;
+    }
+    else {
+        isr_handler_t* handler = irqs[int_num];
+
+        while(handler->next != POISON_NULL) {
+            handler = handler->next;
+        }
+
+        handler->next = action;
+    }
+    hal_restoreInterrupts();
 }
 
 void idt_init(uint32_t memory_location)
@@ -199,7 +236,9 @@ void idt_init(uint32_t memory_location)
     idt_registerInterrupt(IRQ14, (uint32_t)isr46, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     idt_registerInterrupt(IRQ15, (uint32_t)isr47, 0x08, ISR_32_INTRGATE | ISR_ATR_PRESENT | ISR_ATR_RING0);
     //Clear ISRs
-    memset(isrs, 0x00, sizeof(isrs));
+    for(size_t i = 0; i < NR_IRQS; i++) {
+        irqs[i] = POISON_NULL;
+    }
     //Mask all but irqs 1, 2, 12, 14, and 15
     ic_maskIRQ(0);
     ic_unmaskIRQ(1);

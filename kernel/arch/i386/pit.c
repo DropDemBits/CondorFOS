@@ -1,27 +1,24 @@
 #include <stdio.h>
 
 #include <kernel/stack_state.h>
-#include <kernel/idt.h>
+#include <kernel/irq.h>
 #include <kernel/pit.h>
 #include <kernel/tasks.h>
 #include <io.h>
 
 static uint8_t counter_settings[3];
+extern void scheduler_preempt(stack_state_t* state);
 
-void timer_isr(stack_state_t* state)
+irqreturn_t timer_isr(stack_state_t* state)
 {
-#if 0
-    (void) state;
-    putchar('a');
-#else
-    process_preempt(state);
-#endif
+    scheduler_preempt(state);
+    return HANDLED;
 }
 
 void pit_init()
 {
+    irq_addISR(0, timer_isr);
     pit_createCounter(MAIN_FRQ, PIT_COUNTER0, PIT_ACCESS_MODE_LO_HI | PIT_MODE_RATE_GENERATOR);
-    idt_addISR(32, timer_isr);
 }
 
 void pit_createCounter(uint32_t frequency, uint8_t counter, uint8_t mode)

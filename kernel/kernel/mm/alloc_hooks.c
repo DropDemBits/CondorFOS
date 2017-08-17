@@ -18,8 +18,9 @@
 /**
  * alloc_hooks.c: Hooks for the liballoc allocator
  */
- #include <kernel/vmm.h>
- #include <kernel/pmm.h>
+#include <kernel/vmm.h>
+#include <kernel/pmm.h>
+#include <kernel/hal.h>
 
 #define HEAP_START 0xD0000000
 
@@ -74,14 +75,14 @@ static void* psbrk(udword_t length, ubyte_t reduce)
 int liballoc_lock()
 {
     //TODO: Replace with proper spinlock
-    asm("cli");
+    hal_disableInterrupts();
     return 0;
 }
 
 int liballoc_unlock()
 {
     //TODO: Replace with proper spinlock
-    asm("sti");
+    hal_restoreInterrupts();
     return 0;
 }
 

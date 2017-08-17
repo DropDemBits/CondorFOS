@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <io.h>
 
-#include <kernel/idt.h>
+#include <kernel/irq.h>
 #include <kernel/klogger.h>
 #include <kernel/hal.h>
 
@@ -200,13 +200,13 @@ ubyte_t ps2_init(void)
     return RET_SUCCESS;
 }
 
-void ps2_handleDevice(int device, isr_t func)
+void ps2_handleDevice(int device, irq_t func)
 {
     if(device == DEV2) {
         if(!hasDEV2 || device == DEV_INV) return;
-        idt_addISR(IRQ12, func);
+        irq_addISR(12, func);
     }
-    idt_addISR(IRQ1, func);
+    irq_addISR(1, func);
 }
 
 int ps2_sendDataTo(int device, ubyte_t data)

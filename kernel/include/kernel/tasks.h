@@ -23,7 +23,8 @@
  */
 
 #include <kernel/stack_state.h>
-#include <kernel/addrs.h>
+#include <kernel/types.h>
+#include <stdbool.h>
 
 #ifndef THREADS_H
 #define THREADS_H
@@ -45,6 +46,7 @@ typedef struct Process {
     TaskState current_state;
     int pid;
     int timeslice;
+	bool is_usermode;
     physical_addr_t page_base;
     registers_t* regs;
 } process_t;
@@ -52,7 +54,7 @@ typedef struct Process {
 extern void init_regs(registers_t* regs, linear_addr_t entry_point);
 extern void swap_registers(registers_t* src_regs, registers_t* dest_regs);
 
-process_t* process_create();
+process_t* process_create(void *entry_point, bool is_user);
 void process_preempt(stack_state_t* state);
 
 #endif /* THREADS_H */

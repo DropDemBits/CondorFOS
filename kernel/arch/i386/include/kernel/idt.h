@@ -49,8 +49,21 @@
 #define IRQ13 IRQ0+13
 #define IRQ14 IRQ0+14
 #define IRQ15 IRQ0+15
+#define NR_IRQS (IRQ15 - IRQ0 + 1)
 
+typedef enum {
+    NOT_HANDLED,
+    HANDLED,
+} irqreturn_t;
+
+typedef irqreturn_t(*irq_t)(stack_state_t*);
 typedef void(*isr_t)(stack_state_t*);
+
+typedef struct isr_handler {
+	struct isr_handler *next;
+	irq_t handler;
+} isr_handler_t;
+
 
 /**
  * Adds an ISR handler
@@ -60,11 +73,11 @@ typedef void(*isr_t)(stack_state_t*);
 void idt_addISR(uint16_t int_num, isr_t addr);
 
 /**
- * Removes an ISR handler
- * @param int_num The interrupt to detach the handler from
+ * Adds an IRQ handler
+ * @param int_num The interrupt to service
+ * @param addr The address to the handler
  */
-void idt_clearISR(uint16_t int_num);
-
+void idt_addIRQ_ISR(uint16_t int_num, irq_t handler);
 /**
  * Initializes the IDT
  * @param memory_location The location of the IDT base

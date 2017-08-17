@@ -21,110 +21,80 @@
 #include <kernel/hal.h>
 #include <kernel/pmm.h>
 #include <kernel/tasks.h>
-#include <kernel/stack_state.h>
+#include <kernel/scheduler.h>
 #include <kernel/vmm.h>
-#include <kernel/tty.h>
 #include <kernel/vga.h>
 #include <condor.h>
 
 extern void idle_process();
 
 static uint32_t pid_counter = 0;
-process_t* p_last = NULL;
-process_t* p_current = NULL;
 
-process_t* process_create(void (*entry_point)(void))
+process_t* process_create(void *entry_point, bool is_usermode)
 {
-    hal_disableInterrupts();
     process_t* proc = kmalloc(sizeof(process_t));
     if(proc == NULL)
-        return proc;
+        return POISON_NULL;
     memset(proc, 0x00, sizeof(process_t));
 
     registers_t* regs = kmalloc(sizeof(registers_t));
     if(regs == NULL) {
         kfree(proc);
-        return NULL;
+        return POISON_NULL;
     }
     memset(regs, 0x00, sizeof(registers_t));
 
+	proc->next = POISON_NULL;
     proc->regs = regs;
     proc->pid = pid_counter++;
+	proc->is_usermode = is_usermode;
     proc->page_base = vmm_get_current_page_base();
 
-
     // TODO: Move somewhere else
+
     linear_addr_t* stack_base = vmalloc(1);
-    physical_addr_t* stack_phybase = pmalloc();
-    if(vmm_map_address(stack_base, stack_phybase, PAGE_PRESENT | PAGE_RW) == 2) {
-        kpanic("VADDR Alloc Failed (process_create)");
-    }
+    linear_addr_t* kstack_base = vmalloc(1);
 
-    proc->regs->eip = (uint32_t)entry_point;
-    proc->regs->esp = (uint32_t)stack_base+0xFFC;
-    proc->regs->cs = 0x08;
-    proc->regs->ds = 0x10;
-    proc->regs->es = 0x10;
-    proc->regs->fs = 0x10;
-    proc->regs->gs = 0x10;
-    proc->regs->ss = 0x10;
-    proc->regs->eflags = 0x202;
-
-    if(p_current == NULL) {
-        p_current = proc;
-    }
-    else if(p_last == NULL) {
-        p_current->next = proc;
-        p_last = proc;
+    if(is_usermode) {
+        if(vmm_map_address(stack_base,
+                           pmalloc(),
+                           PAGE_PRESENT | PAGE_RW | PAGE_USER) == 2 ||
+           vmm_map_address(kstack_base,
+                           pmalloc(),
+                           PAGE_PRESENT | PAGE_RW) == 2)
+            kpanic("VADDR Alloc Failed (process_create)");
     }
     else {
-        p_last->next = proc;
-        p_last = proc;
+        if(vmm_map_address(stack_base,
+                           pmalloc(),
+                           PAGE_PRESENT | PAGE_RW) == 2)
+            kpanic("VADDR Alloc Failed (process_create)");
+        vfree(kstack_base, 1);
     }
 
-    hal_enableInterrupts();
+    ((stack_state_t*) proc->regs)->eip = (uint32_t)entry_point;
+    ((stack_state_t*) proc->regs)->esp = (uint32_t)stack_base+0xFFC;
+	if(is_usermode) {
+    	((stack_state_t*) proc->regs)->cs = (0x3 << 3) | 0b11;
+    	((stack_state_t*) proc->regs)->ds = (0x4 << 3) | 0b11;
+    	((stack_state_t*) proc->regs)->es = (0x4 << 3) | 0b11;
+    	((stack_state_t*) proc->regs)->fs = (0x4 << 3) | 0b11;
+    	((stack_state_t*) proc->regs)->gs = (0x4 << 3) | 0b11;
+    	((stack_state_t*) proc->regs)->ss = (0x4 << 3) | 0b11;
+        proc->regs->kernel_esp = (physical_addr_t)kstack_base;
+	}
+	else {
+		((stack_state_t*) proc->regs)->cs = (0x1 << 3) | 0b00;
+    	((stack_state_t*) proc->regs)->ds = (0x2 << 3) | 0b00;
+    	((stack_state_t*) proc->regs)->es = (0x2 << 3) | 0b00;
+    	((stack_state_t*) proc->regs)->fs = (0x2 << 3) | 0b00;
+    	((stack_state_t*) proc->regs)->gs = (0x2 << 3) | 0b00;
+    	((stack_state_t*) proc->regs)->ss = (0x2 << 3) | 0b00;
+        proc->regs->kernel_esp = (physical_addr_t)stack_base;
+	}
+    ((stack_state_t*) proc->regs)->eflags = 0x202;
+
+    schedule_process(proc);
+
     return proc;
-}
-
-void swap_registers(registers_t* src, registers_t* dest)
-{
-    memcpy(dest, src, sizeof(registers_t));
-}
-
-void process_preempt(stack_state_t* state)
-{
-    uint32_t int_num = 0;
-
-    if(p_current == NULL) return;
-
-
-    if(p_current->current_state != INITIALIZED) swap_registers(state, p_current->regs);
-    else p_current->current_state = RUNNING;
-
-    int_num = state->int_num;
-    if(p_current->next == NULL) goto skip;
-    //if(p_current->next->pid == 0) p_last->next = p_current;
-
-    swap_registers(state, p_current->regs);
-    if(p_last != NULL) p_last->next = p_current;
-    p_last = p_current;
-    p_current = p_last->next;
-    p_last->next = NULL;
-
-    skip:
-    swap_registers(p_current->regs, state);
-    state->int_num = int_num;
-
-
-    terminal_storePosition();
-    terminal_set_shouldUpdateCursor(0);
-    terminal_moveCursor(0, 0);
-    uint16_t old_color = terminal_getColor();
-    terminal_setColor(VGA_WHITE, VGA_BLACK);
-
-    printf("Current PID(%d): (EIP: %#lx)\n", p_current->pid, p_current->regs->eip);
-
-    terminal_setColor(old_color & 0xFF, old_color >> 8);
-    terminal_set_shouldUpdateCursor(1);
-    terminal_restorePosition();
 }

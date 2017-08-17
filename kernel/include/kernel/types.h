@@ -15,21 +15,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-.macro readCR creg_num
-.globl readCR\creg_num\()
-readCR\creg_num\():
-	xor %eax, %eax
-    movl %cr\creg_num\(), %eax
-    ret
-.endm
+#ifndef _TYPES_H_
+#define _TYPES_H_
 
-readCR 0
-readCR 1
-readCR 2
-readCR 3
-readCR 4
-readCR 8
+#ifndef POISON_NULL
+#define POISON_NULL (void*)0xfeeeeb1e
+#endif
 
-.globl switchPageBase
-switchPageBase:
-movl %eax, %cr3
+//Unsigned types
+typedef unsigned long long uqword_t;
+typedef unsigned long udword_t;
+typedef unsigned uword_t;
+typedef unsigned char ubyte_t;
+typedef unsigned char uchar_t;
+
+//Signed types
+typedef   signed long long sqword_t;
+typedef   signed long sdword_t;
+typedef   signed sword_t;
+typedef   signed char sbyte_t;
+typedef   signed char schar_t;
+
+typedef   signed long long qword_t;
+typedef   signed long dword_t;
+typedef   signed word_t;
+typedef   signed char byte_t;
+typedef   signed char char_t;
+
+#include <kernel/addrs.h>
+#include <kernel/stack_state.h>
+
+#endif /* _TYPES_H_ */

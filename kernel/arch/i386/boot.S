@@ -32,14 +32,23 @@
 .set KERNEL_VIRTUAL_BASE, 0xC0000000
 
 .section .bss
+.align 4096 # Align to page boundary
+
 # Initialize the stack
-stack_bottom:
-.globl stack_bottom
-.skip 16384 # Reserve 16KiB
 stack_top:
 .globl stack_top
+.skip 16384 # Reserve 16KiB
+stack_bottom:
+.globl stack_bottom
 
-.align 4096 # Align to page boundary
+tss_stack_top:
+.skip 4096
+tss_stack_bottom:
+
+df_stack_bottom:
+.skip 4096
+df_stack_top:
+
 
 pd_start:
     .skip 4096
@@ -56,11 +65,6 @@ pt1_end:
 pt2_start:
     .skip 4096
 pt2_end:
-
-# TSS Must be aligned to page boundary
-tss_start:
-    .skip 0x68 # Size of tss
-tss_end:
 
 .global sse2_support
 sse2_support:
@@ -97,6 +101,15 @@ idtr:
 
 .align 4096
 
+# TSS Must be aligned to page boundary
+.global tss_start
+tss_start:
+	.long 0
+	.long tss_stack_top
+	.long 0x10
+	.skip 0x5C # Size of tss
+tss_end:
+
 .section .rodata
 
 # Main code
@@ -107,9 +120,12 @@ idtr:
 _start:
 	cli
 
+	# Initialize stack
+	movl $(stack_top - KERNEL_VIRTUAL_BASE), %esp
+
     # Preserve EAX and EBX
-	movl %ebx, 0x00000500
-	movl %eax, 0x00000504
+	push %ebx
+	push %eax
 
     # Check for SSE & SSE2
     movl $0x1, %eax
@@ -131,6 +147,10 @@ _start:
     movb $0x1, (sse2_support - KERNEL_VIRTUAL_BASE)
 
 .no_sse:
+	# Restore EAX & EBX
+	popl %eax
+	popl %ebx
+
     # Initialize paging
 
     # Setup registers
@@ -183,8 +203,8 @@ _start:
     orl $0x80010000, %edx
     movl %edx, %cr0
 
-    lea .LtoHigher, %eax
-    jmp *%eax
+    lea .LtoHigher, %edx
+    jmp *%edx
 
 .LtoHigher:
 
@@ -196,9 +216,6 @@ _start:
     movl %cr3, %edx
     movl %edx, %cr3
 
-	# Initialize stack
-	movl $stack_top, %esp
-
 	# Load GDT
 	lgdt (gdt_data)
 
@@ -209,22 +226,30 @@ _start:
 	movw %dx, %fs
 	movw %dx, %gs
 	movw %dx, %ss
+
+
 	jmp $8, $.flush_cs
 .flush_cs:
 
+	# Set stack
+	movl $stack_top, %esp
+	push %eax
+	push %ebx
+
 	push $idt_data
 	call idt_init
+	addl $4, %esp
 
 	lidt (idtr)
 
     # Setup TSS
     movl $tss_descriptor, %edi
-    movl $tss_start, %eax
+    movl $tss_start, %edx
 
-    movw %ax, 2(%edi)
-    shr $16, %eax
-    movb %al, 4(%edi)
-    movb %ah, 7(%edi)
+    movw %dx, 2(%edi)
+    shr $16, %edx
+    movb %dl, 4(%edi)
+    movb %dh, 7(%edi)
 
     movl $tss_start, %edi
     movw $0x10, 8(%edi)
@@ -232,21 +257,21 @@ _start:
     movw $0x68, 102(%edi)
 
     # Load TSS
-    //xchg %bx, %bx
-    movw $0x28, %ax
-    ltr %ax
+    movw $(5 << 3), %dx
+    ltr %dx
 
-    # Restore EAX and EBX
-    movl 0xC0000500, %ebx
-	movl 0xC0000504, %eax
-
+    # Restore EBX
+	popl %ebx
+	popl %eax
     orl $KERNEL_VIRTUAL_BASE, %ebx
 
 	# Before anything interactive, init kernel
-	# Also push multiboot stuff
-	push %eax # Multiboot magic thing
+	# Also push multiboot stuff (EAX is still on stack)
+	push %eax
 	push %ebx # Address to info structure
 	call kinit
+
+	# kmain is launched as a seperate process
 
 	# Hang if there's nothing to do
 .hang:

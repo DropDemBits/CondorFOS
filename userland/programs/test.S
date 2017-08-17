@@ -1,4 +1,3 @@
-movl $0xBEADBEEF, %eax
 dep:
-hlt
+movl $0xBEADBEEF, %eax
 jmp dep

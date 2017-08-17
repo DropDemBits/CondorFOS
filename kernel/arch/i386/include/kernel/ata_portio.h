@@ -44,9 +44,9 @@
 #define ATA_IO_CTRL_STAT_3 (ATA_IO_BASE_3+0x206)
 
 // Fallback IRQ Numbers
-#define ATA_IRQ_0 IRQ14
-#define ATA_IRQ_1 IRQ15
-#define ATA_IRQ_2 IRQ11
-#define ATA_IRQ_3 IRQ10
+#define ATA_IRQ_0 14
+#define ATA_IRQ_1 15
+#define ATA_IRQ_2 11
+#define ATA_IRQ_3 10
 
 #endif /* _ATAPIO_H */

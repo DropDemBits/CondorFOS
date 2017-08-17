@@ -15,21 +15,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-.macro readCR creg_num
-.globl readCR\creg_num\()
-readCR\creg_num\():
-	xor %eax, %eax
-    movl %cr\creg_num\(), %eax
-    ret
-.endm
+#include <stdint.h>
+#include <kernel/idt.h>
 
-readCR 0
-readCR 1
-readCR 2
-readCR 3
-readCR 4
-readCR 8
+#ifndef _IRQ_H_
+#define _IRQ_H_
 
-.globl switchPageBase
-switchPageBase:
-movl %eax, %cr3
+inline void irq_addISR(uint8_t irq, irq_t addr)
+{
+    idt_addIRQ_ISR(irq, addr);
+}
+
+#endif /* _IRQ_H_ */

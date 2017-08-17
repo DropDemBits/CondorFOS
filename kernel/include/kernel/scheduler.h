@@ -15,21 +15,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-.macro readCR creg_num
-.globl readCR\creg_num\()
-readCR\creg_num\():
-	xor %eax, %eax
-    movl %cr\creg_num\(), %eax
-    ret
-.endm
+#include <kernel/tasks.h>
 
-readCR 0
-readCR 1
-readCR 2
-readCR 3
-readCR 4
-readCR 8
+#ifndef _SCHEDULER_H_
+#define _SCHEDULER_H_
 
-.globl switchPageBase
-switchPageBase:
-movl %eax, %cr3
+void schedule_process(process_t* process);
+
+#endif

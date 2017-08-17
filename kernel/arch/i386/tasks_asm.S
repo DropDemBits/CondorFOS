@@ -15,12 +15,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-.globl idle_process
-.extern p_current, p_last
+.globl idle_process, dummy_process, tss_set_esp0
+.extern p_current, p_last, tss_start
 
 idle_process:
     hlt
     jmp idle_process
+
+dummy_process:
+    jmp dummy_process
+
+tss_set_esp0:
+    push %ebp
+    movl %esp, %ebp
+    push %eax
+
+    # Current Stack state (EBP relative)
+    #  ___________
+    # |           |
+    # |    EBP    |    0
+    # |___________|
+    # |           |
+    # |  RET ADDR |    4
+    # |___________|
+    # |           |
+    # |   ESP0    |    8
+    # |___________|
+    # |           |
+
+    movl 8(%ebp), %eax
+    movl %eax, (tss_start + 4)
+
+    pop %eax
+    pop %ebp
+    ret
 
 get_eip:
     popl %eax

@@ -46,10 +46,17 @@ static ubyte_t smap_page(linear_addr_t* laddr, physical_addr_t* paddr, uword_t f
 
     if(!(PAGE_DIRECTORY[pd_index] & PAGE_PRESENT))
     {
-        if(pmm_isInited())
-            PAGE_DIRECTORY[pd_index] = (physical_addr_t)pmalloc(1) | 0x00000003 | (flags & PAGE_USER & ~PAGE_FLAG_MASK);
-        else
-            PAGE_DIRECTORY[pd_index] = 0x1000 | 0x00000003 | (flags & PAGE_USER & ~PAGE_FLAG_MASK);
+        if(pmm_isInited()) {
+            if(laddr >= (linear_addr_t*) KERNEL_VIRTUAL_BASE) {
+                PAGE_DIRECTORY[pd_index] = (physical_addr_t) pmalloc() | 0x003;
+            }
+            else {
+                PAGE_DIRECTORY[pd_index] = (physical_addr_t) pmalloc() | 0x007;
+            }
+        }
+        else {
+            PAGE_DIRECTORY[pd_index] = 0x1000 | 0x003 | (flags & PAGE_USER);
+        }
 
         flush_tlb(laddr);
         memset((linear_addr_t*)((linear_addr_t)(PAGE_TABLE_BASE+pt_index) & (~PAGE_FLAG_MASK)), 0, 4096);
@@ -85,19 +92,36 @@ static void pf_handler(stack_state_t* state)
 {
     linear_addr_t* laddr = (linear_addr_t*)readCR2();
 
-    if(!(state->err_code & (PAGE_PRESENT | PAGE_USER))) {
-        if(!pmm_isInited()) {
-            printf("ERR: %#lx\n", state->err_code);
-            kspanic("PF Before PMM was initialized", state);
-        }
-        else if(vmm_get_physical_addr(laddr) != 0) {
-            PAGE_TABLE_BASE[(linear_addr_t)laddr >> BLOCK_BITS] |= PAGE_PRESENT;
-        }
-        else smap_page(laddr, pmalloc(1), PAGE_PRESENT | PAGE_RW);
+    if(laddr == POISON_NULL) {
+        kspanic("NULL Pointer", state);
     }
-    else if(state->err_code & PAGE_RW) {
-        kspanic("Failed Write", state);
+    else if((state->err_code & PAGE_USER) == 0) {
+        //Supervisor Mode
+        if((state->err_code & PAGE_PRESENT) == 0) {
+            if(!pmm_isInited()) {
+                printf("ERR: %#lx\n", state->err_code);
+                kspanic("PF Before PMM was initialized", state);
+            }
+            else if(vmm_get_physical_addr(laddr) != 0) {
+                PAGE_TABLE_BASE[(linear_addr_t)laddr >> BLOCK_BITS] |= PAGE_PRESENT;
+            }
+            else smap_page(laddr, pmalloc(1), PAGE_PRESENT | PAGE_RW);
+        }
+        else if((state->err_code & PAGE_RW) == 1) {
+            kspanic("Failed Write", state);
+        }
     }
+    else {
+        // User Mode
+        if(laddr >= ((linear_addr_t*)KERNEL_VIRTUAL_BASE)) {
+            /*
+             * TODO: Send a signal (SIGSEGV) to the offending process
+             * For now, just do a kpanic.
+             */
+            kspanic("CurrentProcess: SIGSEV", state);
+        }
+    }
+
 }
 
 ubyte_t vmm_map_address(linear_addr_t* laddr, physical_addr_t* paddr, uqword_t flags)
@@ -162,7 +186,7 @@ static void vaddm_set_bit(udword_t bit) {
     if(bit > 32768*32) return;
 
     page_bitmap[bit >> 5] |= (1 << (bit % 32));
-	if(check_super_region(bit))
+    if(check_super_region(bit))
         superpage_bitmap[bit >> 15] |= (1 << ((bit >> 10) & 0x1F));
 }
 
@@ -170,7 +194,7 @@ static void vaddm_clear_bit(udword_t bit) {
     if(bit > 32768*32) return;
 
     page_bitmap[bit >> 5] &= ~(1 << (bit % 32));
-	superpage_bitmap[bit >> 15] &= ~(1 << ((bit >> 10) & 0x1F));
+    superpage_bitmap[bit >> 15] &= ~(1 << ((bit >> 10) & 0x1F));
 }
 
 int vaddm_get_bit(udword_t bit) {

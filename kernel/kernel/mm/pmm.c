@@ -273,7 +273,7 @@ physical_addr_t* kpmalloc(palloc_flags_t alloc_flags)
 
 void pfree(physical_addr_t* base_address, size_t num_addresses)
 {
-    if(base_address == NULL) return;
+    if(base_address == POISON_NULL) return;
     else if((physical_addr_t)base_address == 0xFFFFFFFF) kpanic("Invalid address");
 
     if(base_address >= (physical_addr_t*) 0x01000000 && num_addresses == 1) {

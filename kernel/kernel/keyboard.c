@@ -22,7 +22,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <kernel/idt.h>
+#include <kernel/irq.h>
 
 #include "kernel/ps2.h"
 
@@ -99,7 +99,7 @@ ubyte_t keyboard_getKeyState(ubyte_t key)
 	}
 }
 
-void keyboard_isr()
+irqreturn_t keyboard_isr()
 {
     ubyte_t keycode = controller_readDataFrom(controller_getDevHID(HID_KEYBOARD));
 
@@ -107,7 +107,7 @@ void keyboard_isr()
         if(state & STATE_EXTENDED0)
         {
             if(state & ~STATE_PAUSE) state = 0;
-            return;
+            return HANDLED;
         }
         else state |= STATE_EXTENDED0;
     }
@@ -118,7 +118,7 @@ void keyboard_isr()
     else if(keycode == 0xF0) {
         if(state & STATE_BREAK) {
             if(!(state & (STATE_EXTENDED1 | STATE_PAUSE))) state = 0;
-            return;
+            return HANDLED;
         }
         else state |= STATE_BREAK;
     }
@@ -129,11 +129,11 @@ void keyboard_isr()
                 buffer_push(KEY_PAUSE);
                 key_states[KEY_PAUSE] = KEY_STATE_DOWN;
                 state = 0;
-                return;
+                return HANDLED;
             }
         }
         else {
-            if(state & STATE_EXTENDED1 || state & STATE_PAUSE) return;
+            if(state & STATE_EXTENDED1 || state & STATE_PAUSE) return HANDLED;
 
             // Regular key end
             ubyte_t trans = 0;
@@ -186,6 +186,8 @@ void keyboard_isr()
             status = new_status;
         }
     }
+
+    return HANDLED;
 }
 
 void keyboard_init(void)

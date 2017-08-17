@@ -125,13 +125,21 @@ IRQ 46
 IRQ_SPURIOUS 47
 
 prep_isr:
+	cli
+	
     # Because ESP and SS aren't pushed when there's no privilege change,
     # check if there's no privilege change to push ESP and SS.
     testl $3, 12(%esp) #CS
     jz change_stack
 
 common_isr:
-    pusha
+    push %eax
+	push %ebx
+	push %ecx
+	push %edx
+	push %ebp
+	push %esi
+	push %edi
 
     push %ds
     push %es
@@ -153,11 +161,17 @@ common_isr:
     popl %es
     popl %ds
 
-    popa
+    popl %edi
+	popl %esi
+	popl %ebp
+	popl %edx
+	popl %ecx
+	popl %ebx
+	popl %eax
     addl $8, %esp
 
     # Again, check for no privilege change to fix stack
-    testl $3, 12(%esp)
+    testl $3, 4(%esp)
     jz revert_change_stack
 fini_isr:
     iret
