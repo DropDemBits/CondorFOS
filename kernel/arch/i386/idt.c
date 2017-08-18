@@ -239,8 +239,8 @@ void idt_init(uint32_t memory_location)
     for(size_t i = 0; i < NR_IRQS; i++) {
         irqs[i] = POISON_NULL;
     }
-    //Mask all but irqs 1, 2, 12, 14, and 15
-    ic_maskIRQ(0);
+    //Mask all but irqs 0, 1, 2, 12, 14, and 15
+    ic_unmaskIRQ(0);
     ic_unmaskIRQ(1);
     ic_unmaskIRQ(2);
     ic_maskIRQ(3);

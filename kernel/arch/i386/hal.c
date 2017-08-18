@@ -47,14 +47,21 @@ void hal_disableInterrupts()
 
 void hal_enableInterrupts()
 {
-    asm("sti");
+    asm volatile("pushf\n\t"
+        "popl %%eax\n\t"
+        "andl $0x200, %%eax\n\t"
+        "movl %%eax, (%0)\n\t"
+        "sti\n\t"
+        :"=m"(were_intrs_enabled)::"eax");
 }
 
 void hal_restoreInterrupts()
 {
     if(were_intrs_enabled) {
-        were_intrs_enabled = 0;
         asm("sti");
+    }
+    else {
+        asm("cli");
     }
 }
 

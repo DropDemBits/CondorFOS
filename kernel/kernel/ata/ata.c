@@ -20,16 +20,17 @@
 
 #include <kernel/ata.h>
 #include <kernel/irq.h>
+#include <kernel/hal.h>
 #include <kernel/addrs.h>
 #include <io.h>
 #include <serial.h>
 #include <condor.h>
 
 #define ATA_TYPE_INVALID 0
-#define ATA_TYPE_ATA 1
-#define ATA_TYPE_ATAPI 2
-#define ATA_TYPE_SATA 3
-#define ATA_TYPE_SATAPI 4
+#define ATA_TYPE_ATA 0b100
+#define ATA_TYPE_SATA 0b101
+#define ATA_TYPE_ATAPI 0b110
+#define ATA_TYPE_SATAPI 0b111
 
 #define DEVICE_INFO_SHIFT 1
 
@@ -58,7 +59,7 @@ static ubyte_t current_controller = 0;
 
 uword_t ide_init(uword_t base_port, uword_t alt_port, ubyte_t irq)
 {
-    if(irq < IRQ0 || base_port == 0 || alt_port == 0) return ATA_DEVICE_INVALID;
+    if(base_port == 0 || alt_port == 0) return ATA_DEVICE_INVALID;
 
     ata_info_t* data = kmalloc(256*16);
     ata_interface_type_t result_master = ATA_TYPE_INVALID, result_slave = ATA_TYPE_INVALID;
@@ -77,7 +78,7 @@ uword_t ide_init(uword_t base_port, uword_t alt_port, ubyte_t irq)
         device->ata_version = (BIT_SUM16(data->major_version));
         device->udma_support = data->udma0_support+data->udma1_support+data->udma2_support+data->udma3_support+data->udma4_support+data->udma5_support+data->udma6_support;
         device->mdma_support = data->mdma0_support+data->mdma1_support+data->mdma2_support;
-        if((device->interface_type & ATAPI) != ATAPI) {
+        if((device->interface_type & 0b010) == 0b000) {
             device->lba48_support = data->lba48_feature_set_support;
         }
         device->base_port = base_port;
@@ -91,6 +92,7 @@ uword_t ide_init(uword_t base_port, uword_t alt_port, ubyte_t irq)
         irq_addISR(irq, ata_irq);
         device_id = controller_index;
         controller_index += 2;
+        if(controllers == POISON_NULL) controllers = NULL; 
         controllers = krealloc(controllers, (controller_index >> 1) * sizeof(ata_device_t*));
         controllers[device_id >> 1] = device;
     }
@@ -104,7 +106,7 @@ uword_t ide_init(uword_t base_port, uword_t alt_port, ubyte_t irq)
 
 ata_device_t* ata_getDeviceInfo(uword_t device)
 {
-    if(device == ATA_DEVICE_INVALID) return POISON_NULL;
+    if(device == ATA_DEVICE_INVALID || device >= controller_index) return POISON_NULL;
     return controllers[device >> DEVICE_INFO_SHIFT];
 }
 
@@ -122,7 +124,7 @@ bool ata_sendCommand(uword_t device, ubyte_t command, ubyte_t subcommand, void* 
 
     outb(base + ATA_COMMAND, command);
     waitForIRQ(device);
-    return controllers[device]->has_errored;
+    return controllers[device >> DEVICE_INFO_SHIFT]->has_errored;
 }
 
 bool ata_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* destination)
@@ -137,7 +139,7 @@ bool ata_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* d
     else if(device == ATA_DEVICE_INVALID ||
             controllers[device >> DEVICE_INFO_SHIFT]->interface_type == ATA_TYPE_INVALID)
             return false;
-    else if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type & ATAPI)
+    else if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type != ATA)
             return false;
 
     uword_t base = switchDevice(device);
@@ -166,7 +168,7 @@ bool ata_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* d
     }
     waitForIRQ(device);
 
-    for(uword_t i = 0; inb(base+ATA_STATUS) & 0x08; i++) {
+    for(uword_t i = 0; inb(controllers[device >> DEVICE_INFO_SHIFT]->alt_port) & 0x08; i++) {
         buffer[i] = inw(base);
     }
 
@@ -192,7 +194,7 @@ bool ata_writeSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* 
     else if(device == ATA_DEVICE_INVALID ||
             controllers[device >> DEVICE_INFO_SHIFT]->interface_type == ATA_TYPE_INVALID)
             return false;
-    else if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type & ATAPI)
+    else if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type != ATA)
             return false;
 
     uword_t base = switchDevice(device);
@@ -241,9 +243,9 @@ bool atapi_sendCommand(uword_t device, ubyte_t *command, ubyte_t command_length,
     if(controllers == POISON_NULL)
         return false;
     uword_t base = switchDevice(device);
+    uword_t alt_status = controllers[device >> DEVICE_INFO_SHIFT]->alt_port;
 
-    if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type == ATA_TYPE_INVALID ||
-        controllers[device >> DEVICE_INFO_SHIFT]->interface_type & 0x1 ||
+    if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type != ATAPI || 
         controllers[device >> DEVICE_INFO_SHIFT]->in_use) return false;
     else if(base == 0xFFFF) return false;
 
@@ -256,7 +258,7 @@ bool atapi_sendCommand(uword_t device, ubyte_t *command, ubyte_t command_length,
     outb(base+ATA_BYTEHI, 0x01);
     outb(base+ATA_COMMAND, ATA_PACKET);
 
-    while(inb(base+ATA_STATUS_ALT) & 0x80 && !(inb(base+ATA_STATUS_ALT) & 0x08)) asm("pause");
+    while(inb(alt_status) & 0x80 && !(inb(alt_status) & 0x08)) asm("pause");
 
     outw(base+ATA_DATA, command[0] | command[1] << 8);
     outw(base+ATA_DATA, command[2] | command[3] << 8);
@@ -294,14 +296,14 @@ bool atapi_sendCommand(uword_t device, ubyte_t *command, ubyte_t command_length,
 
     //Make sure CHK/ERR bit is really what it is
     tryAgain:
-    inb(base+ATA_STATUS_ALT);
-    inb(base+ATA_STATUS_ALT);
-    inb(base+ATA_STATUS_ALT);
-    inb(base+ATA_STATUS_ALT);
+    inb(alt_status);
+    inb(alt_status);
+    inb(alt_status);
+    inb(alt_status);
 
     ubyte_t status = 0;
 
-    for(uword_t words = 0; words < word_count && !((status = inb(base+ATA_STATUS_ALT)) & 0x1) && (inb(base+ATA_STATUS_ALT) & 0x08); words++, index++) {
+    for(uword_t words = 0; words < word_count && !((status = inb(alt_status)) & 0x1) && (inb(alt_status) & 0x08); words++, index++) {
         if(atapi_getCommandType(command[0]) == ATA_COMMAND_TYPE_READ) ((uword_t*) data)[index] = inw(base+ATA_DATA);
         else if(atapi_getCommandType(command[0]) == ATA_COMMAND_TYPE_WRITE) outw(base+ATA_DATA, ((uword_t*) data)[index]);
     }
@@ -310,7 +312,7 @@ bool atapi_sendCommand(uword_t device, ubyte_t *command, ubyte_t command_length,
 
     waitForIRQ(device);
 
-    if(inb(base+ATA_STATUS_ALT) & 0x08) {
+    if(inb(alt_status) & 0x08) {
         waitForIRQ(device);
         goto tryAgain;
     }
@@ -321,16 +323,11 @@ bool atapi_sendCommand(uword_t device, ubyte_t *command, ubyte_t command_length,
 
 bool atapi_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* destination)
 {
-    if((lba + sector_count > 0x0FFFFFFF && !controllers[device >> DEVICE_INFO_SHIFT]->lba48_support) ||
-        sector_count == 0)
+    if(sector_count == 0 || lba > 0x0FFFFFFF || controllers == POISON_NULL)
         return false;
-    else if(controllers == POISON_NULL)
+    else if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type != ATAPI)
         return false;
-    else if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type == ATA_TYPE_INVALID ||
-        controllers[device >> DEVICE_INFO_SHIFT]->interface_type & 0x1)
-        return false;
-    else if(lba > 0xFFFFFFFF)
-        return false;
+    
     ubyte_t command[] = {ATAPI_READ_12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     command[9] = sector_count;
@@ -346,15 +343,10 @@ bool atapi_readSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void*
 
 bool atapi_writeSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void* destination)
 {
-    if((lba + sector_count > 0x0FFFFFFF && !controllers[device >> DEVICE_INFO_SHIFT]->lba48_support) ||
-        sector_count == 0)
+    if(sector_count == 0 || lba > 0x0FFFFFFF || controllers == POISON_NULL)
         return false;
-    else if(controllers == POISON_NULL)
-        return false;
-    else if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type == ATA_TYPE_INVALID ||
-        controllers[device >> DEVICE_INFO_SHIFT]->interface_type & 0x1)
-        return false;
-    else if(lba > 0xFFFFFFFF)
+    else if(controllers[device >> DEVICE_INFO_SHIFT]->interface_type == ATA_TYPE_INVALID
+        || controllers[device >> DEVICE_INFO_SHIFT]->interface_type != ATAPI)
         return false;
 
     ubyte_t command[] = {ATAPI_WRITE_12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -377,8 +369,7 @@ bool atapi_writeSectors(uword_t device, uqword_t lba, ubyte_t sector_count, void
 ata_interface_type_t initDevice(uword_t base_port, uword_t alt_port, bool is_slave, void* destination)
 {
     ata_interface_type_t devType = ATA_TYPE_INVALID;
-
-    putchar('\n');
+    
     if(inb(base_port+ATA_STATUS) == 0xFF) return ATA_TYPE_INVALID;
     outb(base_port+ATA_DEVICE_SEL, (is_slave) << 4);
     inb(base_port+ATA_STATUS);
@@ -491,17 +482,17 @@ irqreturn_t ata_irq() {
 void waitForIRQ(uword_t device)
 {
     if(device >= controller_index) return;
-
+    
     volatile uword_t timeout = 0;
     volatile ubyte_t alt_status = 0;
     //TODO: Make 101% Cross Arch Compatible
-    asm("pushf\n\tsti");
+    hal_enableInterrupts();
     while(controllers[device >> DEVICE_INFO_SHIFT]->is_blocked && timeout < 256 && (alt_status & 0x1) == 0) {
         timeout++;
         asm("hlt");
-        alt_status = inb(controllers[device >> DEVICE_INFO_SHIFT]->base_port+ATA_STATUS_ALT);
+        alt_status = inb(controllers[device >> DEVICE_INFO_SHIFT]->alt_port);
     }
-    asm("popf");
+    hal_restoreInterrupts();
 
     // Set for next IRQ
     controllers[device >> DEVICE_INFO_SHIFT]->is_blocked = true;
